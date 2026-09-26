@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from engine.verifier import verify_patch
+from ai.diff_analyzer import DiffAnalyzer
 
 
 router = APIRouter(prefix="/api", tags=["verification"])
@@ -39,6 +40,16 @@ def verify(request: VerificationRequest):
             reproduction_command=request.reproduction_command,
         )
 
+        analyzer = DiffAnalyzer()
+
+        with open(patch_file, "r", encoding="utf-8") as file:
+            patch_content = file.read()
+
+        ai_analysis = analyzer.analyze_diff(
+            patch=patch_content,
+            original_failure=verdict.original_result.stderr,
+        )
+
         return {
             "status": verdict.status,
             "reason": verdict.reason,
@@ -56,6 +67,23 @@ def verify(request: VerificationRequest):
                 "duration": verdict.patched_result.duration,
                 "timed_out": verdict.patched_result.timed_out,
             },
+            "tests": {
+                "passed": verdict.test_result.passed,
+                "exit_code": verdict.test_result.exit_code,
+                "duration": verdict.test_result.duration,
+                "stdout": verdict.test_result.stdout,
+                "stderr": verdict.test_result.stderr,
+                "timed_out": verdict.test_result.timed_out,
+            },
+            "suspicious_checks": [
+                {
+                    "name": check.name,
+                    "detected": check.detected,
+                    "reason": check.reason,
+                }
+                for check in verdict.suspicious_checks
+            ],
+            "ai_analysis": ai_analysis,
         }
 
     except Exception as error:

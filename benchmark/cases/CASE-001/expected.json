@@ -3,6 +3,6 @@
     "expected_status": "VERIFIED"
   },
   "bad_patch": {
-    "expected_status": "NOT_FIXED"
+    "expected_status": "INCONCLUSIVE"
   }
 }

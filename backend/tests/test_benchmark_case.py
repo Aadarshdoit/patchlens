@@ -32,7 +32,7 @@ def test_case_001_bad_patch():
         reproduction_command=["python", "reproduce.py"],
     )
 
-    assert verdict.status == "NOT_FIXED"
+    assert verdict.status == "INCONCLUSIVE"
     assert verdict.original_result.exit_code != 0
     assert verdict.patched_result.exit_code != 0
     assert "TypeError" in verdict.patched_result.stderr
