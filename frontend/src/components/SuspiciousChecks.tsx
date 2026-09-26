@@ -14,17 +14,19 @@ export default function SuspiciousChecks({ checks }: Props) {
         <div>
           <p className="pl-section-label">Patch Integrity</p>
           <p className="mt-0.5" style={{ fontSize: 12, color: "var(--text-muted)" }}>
-            Static checks for suspicious patch patterns
+            Static analysis for suspicious patterns
           </p>
         </div>
         <span
-          className="font-semibold rounded"
+          className="font-mono font-semibold"
           style={{
-            fontSize: 11,
-            padding: "3px 10px",
-            background: detected > 0 ? "#FDF8F0" : "#F0F7F2",
-            color: detected > 0 ? "#A66A1F" : "#2F7D4A",
-            border: `1px solid ${detected > 0 ? "#EDD9A3" : "#B8D9C4"}`,
+            fontSize: 10,
+            padding: "2px 8px",
+            background: detected > 0 ? "var(--inconclusive-bg)" : "var(--verified-bg)",
+            color: detected > 0 ? "var(--inconclusive-text)" : "var(--verified-text)",
+            border: `1px solid ${detected > 0 ? "var(--inconclusive-border)" : "var(--verified-border)"}`,
+            letterSpacing: "0.04em",
+            fontFamily: "'IBM Plex Mono', monospace",
           }}
         >
           {detected > 0 ? `${detected} flagged` : "All clear"}
@@ -33,12 +35,12 @@ export default function SuspiciousChecks({ checks }: Props) {
 
       <ul className="divide-y" style={{ borderColor: "var(--border)" }}>
         {checks.map((check, i) => (
-          <li key={i} className="px-6 py-3 flex items-start gap-3">
-            {/* Status icon */}
+          <li key={i} className="px-5 py-3 flex items-start gap-3">
+            {/* Icon */}
             <span
               className="flex-shrink-0 mt-0.5"
               aria-hidden="true"
-              style={{ color: check.detected ? "#A66A1F" : "#2F7D4A" }}
+              style={{ color: check.detected ? "var(--inconclusive-icon)" : "var(--verified-icon)" }}
             >
               {check.detected ? (
                 <svg viewBox="0 0 14 14" className="w-3.5 h-3.5" fill="none">
@@ -54,10 +56,10 @@ export default function SuspiciousChecks({ checks }: Props) {
             </span>
 
             {/* Content */}
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <p
-                className="font-medium text-sm"
-                style={{ color: "var(--text-primary)" }}
+                className="font-medium"
+                style={{ fontSize: 13, color: "var(--text-primary)", fontFamily: "'IBM Plex Sans', sans-serif" }}
               >
                 {check.name}
               </p>
@@ -74,11 +76,12 @@ export default function SuspiciousChecks({ checks }: Props) {
               className="ml-auto flex-shrink-0 font-mono font-semibold"
               style={{
                 fontSize: 10,
-                padding: "2px 7px",
-                borderRadius: 4,
-                background: check.detected ? "#FDF8F0" : "#F0F7F2",
-                color: check.detected ? "#A66A1F" : "#2F7D4A",
-                border: `1px solid ${check.detected ? "#EDD9A3" : "#B8D9C4"}`,
+                padding: "2px 6px",
+                background: check.detected ? "var(--inconclusive-bg)" : "var(--verified-bg)",
+                color: check.detected ? "var(--inconclusive-text)" : "var(--verified-text)",
+                border: `1px solid ${check.detected ? "var(--inconclusive-border)" : "var(--verified-border)"}`,
+                letterSpacing: "0.04em",
+                fontFamily: "'IBM Plex Mono', monospace",
               }}
             >
               {check.detected ? "DETECTED" : "CLEAR"}

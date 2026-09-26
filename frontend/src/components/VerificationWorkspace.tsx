@@ -12,45 +12,45 @@ export default function VerificationWorkspace({ job, onVerify, isVerifying = fal
   return (
     <section className="pl-card" id="workspace" aria-label="Verification workspace">
       <div className="pl-card-header">
-        <p className="pl-section-label">New Verification</p>
-        <p className="mt-0.5" style={{ fontSize: 12, color: "var(--text-muted)" }}>
-          Job {job.id}
+        <p className="pl-section-label">Verification Input</p>
+        <p className="mt-0.5 font-mono" style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "'IBM Plex Mono', monospace" }}>
+          {job.id}
         </p>
       </div>
 
-      <div className="px-6 py-6 space-y-6">
+      <div className="px-5 py-5 space-y-5">
         {/* Repository */}
         <div>
-          <label
-            className="pl-section-label block mb-2"
-            style={{ fontSize: 10 }}
-          >
+          <p className="pl-section-label mb-1.5" style={{ fontSize: 10 }}>
             Repository
-          </label>
+          </p>
           <div
-            className="rounded px-3 py-2.5 font-mono"
+            className="flex items-center gap-2 px-3 py-2"
             style={{
-              fontSize: 12,
               background: "var(--bg-secondary)",
               border: "1px solid var(--border)",
-              color: "var(--text-secondary)",
-              wordBreak: "break-all",
             }}
           >
-            demo-repo
+            <svg viewBox="0 0 14 14" className="w-3.5 h-3.5 flex-shrink-0" fill="none" aria-hidden="true">
+              <rect x="2" y="2" width="10" height="10" rx="0" stroke="var(--text-muted)" strokeWidth="1.2" />
+              <path d="M5 5h4M5 8h2" stroke="var(--text-muted)" strokeWidth="1.1" strokeLinecap="round" />
+            </svg>
+            <span
+              className="font-mono"
+              style={{ fontSize: 12, color: "var(--text-secondary)", wordBreak: "break-all", fontFamily: "'IBM Plex Mono', monospace" }}
+            >
+              demo-repo
+            </span>
           </div>
         </div>
 
         {/* Bug description */}
         <div>
-          <label
-            className="pl-section-label block mb-2"
-            style={{ fontSize: 10 }}
-          >
+          <p className="pl-section-label mb-1.5" style={{ fontSize: 10 }}>
             Original Failure
-          </label>
+          </p>
           <p
-            className="rounded px-3 py-2.5 leading-relaxed"
+            className="px-3 py-2.5 leading-relaxed"
             style={{
               fontSize: 13,
               background: "var(--bg-secondary)",
@@ -64,36 +64,37 @@ export default function VerificationWorkspace({ job, onVerify, isVerifying = fal
 
         {/* Candidate patch */}
         <div>
-          <label
-            className="pl-section-label block mb-2"
-            style={{ fontSize: 10 }}
-          >
+          <p className="pl-section-label mb-1.5" style={{ fontSize: 10 }}>
             Candidate Patch
-          </label>
+          </p>
           <PatchViewer patch={job.patch} filename="candidate.diff" />
         </div>
 
         {/* Reproduction command */}
         <div>
-          <label
-            className="pl-section-label block mb-2"
-            style={{ fontSize: 10 }}
-          >
+          <p className="pl-section-label mb-1.5" style={{ fontSize: 10 }}>
             Reproduction Command
-          </label>
+          </p>
           <div
-            className="flex items-center gap-2 rounded px-3 py-2.5"
+            className="flex items-center gap-2 px-3 py-2.5"
             style={{
-              background: "#111827",
-              border: "1px solid #374151",
+              background: "#161616",
+              border: "1px solid #3d3d3d",
             }}
           >
-            <span style={{ color: "#4B5563", fontSize: 12, fontFamily: "monospace" }}>
+            <span
+              style={{
+                color: "#6f6f6f",
+                fontSize: 12,
+                fontFamily: "'IBM Plex Mono', monospace",
+                userSelect: "none",
+              }}
+            >
               $
             </span>
             <span
               className="font-mono"
-              style={{ fontSize: 12, color: "#D1FAE5" }}
+              style={{ fontSize: 12, color: "#a8d5b5", fontFamily: "'IBM Plex Mono', monospace" }}
             >
               {job.reproductionCommand}
             </span>
@@ -102,20 +103,24 @@ export default function VerificationWorkspace({ job, onVerify, isVerifying = fal
 
         {/* Actions */}
         <div
-          className="flex items-center gap-4 pt-2"
+          className="flex items-center gap-4 pt-3"
           style={{ borderTop: "1px solid var(--border)" }}
         >
           <button
             onClick={onVerify}
             disabled={isVerifying}
             className="pl-btn-primary"
-            aria-label={isVerifying ? "Verification in progress" : "Run verification"}
+            aria-label={isVerifying ? "Verification in progress" : "Run verification pipeline"}
           >
             {isVerifying ? (
               <>
                 <span
-                  className="w-3.5 h-3.5 rounded-full border-2 border-white"
-                  style={{ borderTopColor: "transparent", animation: "spin 0.7s linear infinite" }}
+                  className="w-3.5 h-3.5 border-2 border-white flex-shrink-0"
+                  style={{
+                    borderTopColor: "transparent",
+                    animation: "spin 0.7s linear infinite",
+                    borderRadius: "50%",
+                  }}
                   aria-hidden="true"
                 />
                 Verifying…

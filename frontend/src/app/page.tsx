@@ -29,7 +29,6 @@ export default function Home() {
     setIsVerifying(true);
     setError(null);
 
-    // Mark all timeline steps as pending while running
     setJob((prev) => ({
       ...prev,
       status: "running",
@@ -48,7 +47,6 @@ export default function Home() {
         reproduction_command: job.reproductionCommand.split(" "),
       });
 
-      // Map API response to UI state
       setJob((current) => ({
         ...current,
         status: "complete",
@@ -73,7 +71,6 @@ export default function Home() {
           failed: data.patched.exit_code !== 0,
         },
 
-        // Backend tests shape: { passed, exit_code, duration, stdout, stderr, timed_out }
         testResults: data.tests
           ? {
               passed: data.tests.passed ?? 0,
@@ -85,16 +82,13 @@ export default function Home() {
             }
           : null,
 
-        // Backend suspicious_checks: { name, detected, reason }[]
         suspiciousChecks: Array.isArray(data.suspicious_checks)
           ? data.suspicious_checks
           : current.suspiciousChecks,
 
-        // Backend ai_analysis: plain string
         aiAnalysis:
           typeof data.ai_analysis === "string" ? data.ai_analysis : null,
 
-        // Mark all timeline steps as done
         timeline: current.timeline.map((step) => ({
           ...step,
           status: "done" as const,
@@ -108,7 +102,11 @@ export default function Home() {
       setJob((prev) => ({
         ...prev,
         status: "idle",
-        timeline: prev.timeline.map((step) => ({ ...step, status: "pending" as const, durationMs: undefined })),
+        timeline: prev.timeline.map((step) => ({
+          ...step,
+          status: "pending" as const,
+          durationMs: undefined,
+        })),
       }));
     } finally {
       setIsVerifying(false);
@@ -122,90 +120,107 @@ export default function Home() {
       <Header activePage="overview" />
 
       <main
-        className="max-w-content mx-auto px-4 sm:px-6 py-8 space-y-6"
+        className="mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6"
         style={{ maxWidth: 1200 }}
       >
-        {/* ── Intro header ─────────────────────────────────────── */}
+        {/* ── Hero strip ──────────────────────────────────────────── */}
         <div
-          className="pl-card px-6 py-7 flex flex-col sm:flex-row sm:items-start gap-6"
+          className="pl-card px-6 py-6"
+          style={{ borderLeft: "4px solid var(--ibm-blue)" }}
         >
-          <div className="flex-1 min-w-0">
-            <p
-              className="pl-section-label mb-2"
-              style={{ fontSize: 10 }}
-            >
-              Patch Verification
-            </p>
-            <h1
-              className="font-semibold tracking-tight leading-snug"
-              style={{ fontSize: 26, color: "var(--text-primary)" }}
-            >
-              AI writes the fix.
-              <br />
-              <span style={{ color: "var(--text-muted)", fontWeight: 400 }}>
-                PatchLens verifies it.
-              </span>
-            </h1>
-            <p
-              className="mt-3 leading-relaxed"
-              style={{ fontSize: 13.5, color: "var(--text-secondary)", maxWidth: 540 }}
-            >
-              Independently reproduce the original failure, apply the candidate patch,
-              and verify the result using execution evidence.
-            </p>
-
-            {/* Pipeline breadcrumb */}
-            <div
-              className="mt-5 flex flex-wrap items-center gap-1 font-mono"
-              style={{ fontSize: 11, color: "var(--text-muted)" }}
-              aria-label="Verification pipeline"
-            >
-              {[
-                "Reproduce",
-                "Apply patch",
-                "Re-run failure",
-                "Run tests",
-                "Inspect",
-                "Verdict",
-              ].map((step, i, arr) => (
-                <React.Fragment key={step}>
-                  <span
-                    className="rounded px-2 py-0.5"
-                    style={{
-                      background: "var(--bg-secondary)",
-                      border: "1px solid var(--border)",
-                      color: "var(--text-secondary)",
-                    }}
-                  >
-                    {step}
-                  </span>
-                  {i < arr.length - 1 && (
-                    <span style={{ color: "var(--border-strong)" }} aria-hidden="true">
-                      →
-                    </span>
-                  )}
-                </React.Fragment>
-              ))}
-            </div>
-          </div>
-
-          {/* Status / Latest result */}
-          <div className="flex-shrink-0 sm:text-right space-y-3">
-            <div className="flex items-center gap-2 sm:justify-end">
-              <span
-                className="w-2 h-2 rounded-full flex-shrink-0"
+          <div className="flex flex-col sm:flex-row sm:items-start gap-6">
+            <div className="flex-1 min-w-0">
+              <p className="pl-section-label mb-1.5" style={{ fontSize: 10 }}>
+                Patch Verification Engine
+              </p>
+              <h1
+                className="font-semibold tracking-tight leading-snug"
                 style={{
-                  background: isVerifying ? "#A66A1F" : "#2F7D4A",
-                  animation: isVerifying ? "pulse 1.5s ease-in-out infinite" : "none",
+                  fontSize: 28,
+                  color: "var(--text-primary)",
+                  fontFamily: "'IBM Plex Sans', sans-serif",
                 }}
-                aria-hidden="true"
-              />
-              <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
-                {isVerifying ? "Verifying…" : "Ready"}
-              </span>
+              >
+                AI writes the fix.
+                <br />
+                <span style={{ color: "var(--text-muted)", fontWeight: 400 }}>
+                  PatchLens verifies it.
+                </span>
+              </h1>
+              <p
+                className="mt-3 leading-relaxed"
+                style={{
+                  fontSize: 14,
+                  color: "var(--text-secondary)",
+                  maxWidth: 520,
+                  fontFamily: "'IBM Plex Sans', sans-serif",
+                }}
+              >
+                Independently reproduce the original failure, apply the candidate
+                patch, and confirm the result using deterministic execution evidence.
+              </p>
+
+              {/* Pipeline steps */}
+              <div
+                className="mt-4 flex flex-wrap items-center gap-1"
+                style={{ fontFamily: "'IBM Plex Mono', monospace" }}
+                aria-label="Verification pipeline"
+              >
+                {[
+                  "Reproduce",
+                  "Apply patch",
+                  "Re-run failure",
+                  "Run tests",
+                  "Inspect",
+                  "Verdict",
+                ].map((step, i, arr) => (
+                  <React.Fragment key={step}>
+                    <span
+                      className="px-2 py-0.5"
+                      style={{
+                        fontSize: 11,
+                        background: "var(--bg-secondary)",
+                        border: "1px solid var(--border)",
+                        color: "var(--text-secondary)",
+                      }}
+                    >
+                      {step}
+                    </span>
+                    {i < arr.length - 1 && (
+                      <span
+                        style={{ color: "var(--border-strong)", fontSize: 11 }}
+                        aria-hidden="true"
+                      >
+                        →
+                      </span>
+                    )}
+                  </React.Fragment>
+                ))}
+              </div>
             </div>
 
-            <div className="flex flex-col gap-2 sm:items-end">
+            {/* Right side: status + CTA */}
+            <div className="flex-shrink-0 sm:text-right space-y-3 sm:pt-1">
+              <div className="flex items-center gap-2 sm:justify-end">
+                <span
+                  className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                  style={{
+                    background: isVerifying ? "var(--inconclusive-icon)" : "var(--verified-icon)",
+                    animation: isVerifying ? "statusPulse 1.5s ease-in-out infinite" : "none",
+                  }}
+                  aria-hidden="true"
+                />
+                <span
+                  style={{
+                    fontSize: 12,
+                    color: "var(--text-muted)",
+                    fontFamily: "'IBM Plex Mono', monospace",
+                  }}
+                >
+                  {isVerifying ? "Verifying…" : "Ready"}
+                </span>
+              </div>
+
               <button
                 onClick={scrollToWorkspace}
                 className="pl-btn-primary"
@@ -216,13 +231,14 @@ export default function Home() {
           </div>
         </div>
 
-        {/* ── Error banner ─────────────────────────────────────── */}
+        {/* ── Error banner ─────────────────────────────────────────── */}
         {error && (
           <section
-            className="rounded-lg px-5 py-4 flex items-start gap-3"
+            className="px-5 py-4 flex items-start gap-3"
             style={{
-              background: "#FDF2F2",
-              border: "1px solid #F0C0C0",
+              background: "var(--notfixed-bg)",
+              border: "1px solid var(--notfixed-border)",
+              borderLeft: "4px solid var(--notfixed-icon)",
             }}
             role="alert"
             aria-live="assertive"
@@ -231,7 +247,7 @@ export default function Home() {
               viewBox="0 0 14 14"
               className="w-4 h-4 flex-shrink-0 mt-0.5"
               fill="none"
-              style={{ color: "#B54747" }}
+              style={{ color: "var(--notfixed-icon)" }}
               aria-hidden="true"
             >
               <circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="1.4" />
@@ -240,19 +256,19 @@ export default function Home() {
             <div>
               <p
                 className="font-semibold"
-                style={{ fontSize: 13, color: "#B54747" }}
+                style={{ fontSize: 13, color: "var(--notfixed-text)", fontFamily: "'IBM Plex Sans', sans-serif" }}
               >
                 Verification engine unavailable
               </p>
               <p
                 className="mt-1 leading-relaxed"
-                style={{ fontSize: 12, color: "#8B3535" }}
+                style={{ fontSize: 12, color: "var(--notfixed-text)", opacity: 0.8 }}
               >
                 {error}
               </p>
               <p
                 className="mt-1"
-                style={{ fontSize: 12, color: "#8B3535", opacity: 0.8 }}
+                style={{ fontSize: 12, color: "var(--notfixed-text)", opacity: 0.65 }}
               >
                 Make sure the PatchLens API is running on port 8000.
               </p>
@@ -260,8 +276,8 @@ export default function Home() {
           </section>
         )}
 
-        {/* ── Workspace + Timeline (two columns on desktop) ────── */}
-        <div ref={workspaceRef} className="grid lg:grid-cols-[1fr_320px] gap-6 items-start">
+        {/* ── Workspace + Timeline ─────────────────────────────────── */}
+        <div ref={workspaceRef} className="grid lg:grid-cols-[1fr_300px] gap-6 items-start">
           <VerificationWorkspace
             job={job}
             onVerify={runVerification}
@@ -270,17 +286,17 @@ export default function Home() {
           <VerificationTimeline steps={job.timeline} />
         </div>
 
-        {/* ── Verdict ──────────────────────────────────────────── */}
+        {/* ── Verdict ──────────────────────────────────────────────── */}
         {showResults && job.outcome && (
           <VerdictCard outcome={job.outcome} reason={job.reason} />
         )}
 
-        {/* ── Evidence summary ─────────────────────────────────── */}
+        {/* ── Evidence summary ─────────────────────────────────────── */}
         {showResults && (
           <EvidenceSummary job={job} />
         )}
 
-        {/* ── Execution comparison ─────────────────────────────── */}
+        {/* ── Execution comparison ─────────────────────────────────── */}
         {showResults && (
           <ExecutionComparison
             original={job.originalExecution}
@@ -288,7 +304,7 @@ export default function Home() {
           />
         )}
 
-        {/* ── Failure signature + Tests (two columns) ──────────── */}
+        {/* ── Failure signature + Tests ────────────────────────────── */}
         {showResults && (
           <div className="grid md:grid-cols-2 gap-6">
             <FailureSignature sig={job.failureSignature} />
@@ -298,7 +314,7 @@ export default function Home() {
           </div>
         )}
 
-        {/* ── Patch Integrity + AI Analysis (two columns) ──────── */}
+        {/* ── Patch Integrity + AI Analysis ────────────────────────── */}
         {showResults && (
           <div className="grid md:grid-cols-2 gap-6">
             {job.suspiciousChecks.length > 0 && (
@@ -317,15 +333,16 @@ export default function Home() {
           borderColor: "var(--border)",
           fontSize: 12,
           color: "var(--text-muted)",
+          fontFamily: "'IBM Plex Sans', sans-serif",
         }}
       >
         PatchLens — deterministic AI fix verification
       </footer>
 
       <style>{`
-        @keyframes pulse {
+        @keyframes statusPulse {
           0%, 100% { opacity: 1; }
-          50% { opacity: 0.4; }
+          50% { opacity: 0.3; }
         }
       `}</style>
     </div>

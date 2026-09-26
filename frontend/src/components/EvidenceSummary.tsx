@@ -55,7 +55,7 @@ function buildEvidenceItems(job: VerificationJob): EvidenceItem[] {
   if (job.suspiciousChecks.length > 0) {
     const anyDetected = job.suspiciousChecks.some((c) => c.detected);
     checks.push({
-      label: "No suspicious patch signals detected",
+      label: "No suspicious patch signals",
       met: !anyDetected,
       detail: anyDetected
         ? `${job.suspiciousChecks.filter((c) => c.detected).length} signal(s) flagged`
@@ -70,21 +70,39 @@ export default function EvidenceSummary({ job }: Props) {
   const items = buildEvidenceItems(job);
   if (items.length === 0) return null;
 
+  const metCount = items.filter((i) => i.met).length;
+
   return (
     <section className="pl-card">
-      <div className="pl-card-header">
-        <p className="pl-section-label">Evidence Summary</p>
-        <p className="mt-0.5" style={{ fontSize: 12, color: "var(--text-muted)" }}>
-          Checklist derived from actual execution evidence
-        </p>
+      <div className="pl-card-header flex items-center justify-between">
+        <div>
+          <p className="pl-section-label">Evidence Summary</p>
+          <p className="mt-0.5" style={{ fontSize: 12, color: "var(--text-muted)" }}>
+            Derived from execution evidence
+          </p>
+        </div>
+        <span
+          className="font-mono"
+          style={{
+            fontSize: 11,
+            color: metCount === items.length ? "var(--verified-text)" : "var(--notfixed-text)",
+            background: metCount === items.length ? "var(--verified-bg)" : "var(--notfixed-bg)",
+            border: `1px solid ${metCount === items.length ? "var(--verified-border)" : "var(--notfixed-border)"}`,
+            padding: "2px 8px",
+            fontFamily: "'IBM Plex Mono', monospace",
+            letterSpacing: "0.04em",
+          }}
+        >
+          {metCount}/{items.length}
+        </span>
       </div>
 
-      <ul className="px-6 py-4 space-y-2.5">
+      <ul className="divide-y" style={{ borderColor: "var(--border)" }}>
         {items.map((item, i) => (
-          <li key={i} className="flex items-start gap-3">
+          <li key={i} className="flex items-start gap-3 px-5 py-3">
             <span
               className="flex-shrink-0 mt-0.5"
-              style={{ color: item.met ? "#2F7D4A" : "#B54747" }}
+              style={{ color: item.met ? "var(--verified-icon)" : "var(--notfixed-icon)" }}
               aria-hidden="true"
             >
               {item.met ? (
@@ -99,17 +117,17 @@ export default function EvidenceSummary({ job }: Props) {
                 </svg>
               )}
             </span>
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <span
-                className="text-sm font-medium"
-                style={{ color: "var(--text-primary)" }}
+                className="font-medium"
+                style={{ fontSize: 13, color: "var(--text-primary)", fontFamily: "'IBM Plex Sans', sans-serif" }}
               >
                 {item.label}
               </span>
               {item.detail && (
                 <span
                   className="ml-2"
-                  style={{ fontSize: 12, color: "var(--text-muted)" }}
+                  style={{ fontSize: 12, color: "var(--text-muted)", fontFamily: "'IBM Plex Sans', sans-serif" }}
                 >
                   — {item.detail}
                 </span>

@@ -8,43 +8,44 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // PatchLens warm cream palette
-        cream: {
-          50: "#FAFAF7",
-          100: "#F7F6F2",
-          200: "#F2F1ED",
-          300: "#E8E6DF",
-          400: "#D8D5CC",
+        // IBM Carbon-inspired palette
+        "ibm-blue": {
+          DEFAULT: "#0f62fe",
+          hover:   "#0050e6",
+          light:   "#edf5ff",
         },
         border: {
-          DEFAULT: "#E4E1DA",
-          strong: "#C8C5BC",
+          DEFAULT: "#e0e0e0",
+          strong:  "#c6c6c6",
         },
         ink: {
-          DEFAULT: "#202124",
-          secondary: "#5F6368",
-          muted: "#858585",
+          DEFAULT:   "#161616",
+          secondary: "#525252",
+          muted:     "#8d8d8d",
         },
-        // Semantic verdict colors – muted, professional
+        // Semantic verdict colors
         verified: {
-          bg: "#F0F7F2",
-          text: "#2F7D4A",
-          border: "#B8D9C4",
+          bg:     "#defbe6",
+          text:   "#044317",
+          border: "#a7f0ba",
+          icon:   "#24a148",
         },
         notfixed: {
-          bg: "#FDF2F2",
-          text: "#B54747",
-          border: "#F0C0C0",
+          bg:     "#fff1f1",
+          text:   "#750e13",
+          border: "#ffb3b8",
+          icon:   "#da1e28",
         },
         inconclusive: {
-          bg: "#FDF8F0",
-          text: "#A66A1F",
-          border: "#EDD9A3",
+          bg:     "#fdf4e3",
+          text:   "#5c3d11",
+          border: "#f1c21b",
+          icon:   "#f1c21b",
         },
       },
       fontFamily: {
         sans: [
-          "Inter",
+          "'IBM Plex Sans'",
           "system-ui",
           "-apple-system",
           "BlinkMacSystemFont",
@@ -52,7 +53,7 @@ module.exports = {
           "sans-serif",
         ],
         mono: [
-          '"JetBrains Mono"',
+          "'IBM Plex Mono'",
           "ui-monospace",
           "SFMono-Regular",
           "Menlo",
@@ -65,14 +66,14 @@ module.exports = {
         "2xs": ["0.6875rem", { lineHeight: "1rem" }],
       },
       borderRadius: {
-        sm: "4px",
-        DEFAULT: "6px",
-        md: "6px",
-        lg: "8px",
-        xl: "10px",
+        sm:      "2px",
+        DEFAULT: "2px",
+        md:      "2px",
+        lg:      "4px",
+        xl:      "4px",
       },
       boxShadow: {
-        card: "0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)",
+        card:    "0 1px 2px rgba(0,0,0,0.08)",
         "card-sm": "0 1px 2px rgba(0,0,0,0.05)",
       },
       maxWidth: {

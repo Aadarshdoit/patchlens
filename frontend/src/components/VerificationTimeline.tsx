@@ -1,16 +1,16 @@
 import React from "react";
 import type { TimelineStep } from "@/lib/types";
 
-const STEP_ICONS: Record<TimelineStep["status"], React.ReactNode> = {
+const STEP_ICON: Record<TimelineStep["status"], React.ReactNode> = {
   done: (
-    <svg viewBox="0 0 12 12" className="w-3 h-3" fill="none" aria-hidden="true">
-      <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    <svg viewBox="0 0 10 10" className="w-2.5 h-2.5" fill="none" aria-hidden="true">
+      <path d="M2 5l2 2 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   ),
   running: (
     <span
-      className="w-2 h-2 rounded-full block animate-pulse"
-      style={{ background: "currentColor" }}
+      className="w-2 h-2 rounded-full block"
+      style={{ background: "currentColor", animation: "pulse 1.2s ease-in-out infinite" }}
       aria-label="Running"
     />
   ),
@@ -22,20 +22,20 @@ const STEP_ICONS: Record<TimelineStep["status"], React.ReactNode> = {
     />
   ),
   failed: (
-    <svg viewBox="0 0 12 12" className="w-3 h-3" fill="none" aria-hidden="true">
-      <path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    <svg viewBox="0 0 10 10" className="w-2.5 h-2.5" fill="none" aria-hidden="true">
+      <path d="M2 2l6 6M8 2l-6 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
     </svg>
   ),
 };
 
 const STEP_COLORS: Record<
   TimelineStep["status"],
-  { circle: string; text: string; meta: string }
+  { bg: string; border: string; fg: string; text: string }
 > = {
-  done: { circle: "#2F7D4A", text: "var(--text-primary)", meta: "#2F7D4A" },
-  running: { circle: "#A66A1F", text: "var(--text-primary)", meta: "#A66A1F" },
-  pending: { circle: "var(--border-strong)", text: "var(--text-muted)", meta: "var(--text-muted)" },
-  failed: { circle: "#B54747", text: "var(--text-primary)", meta: "#B54747" },
+  done:    { bg: "var(--verified-icon)", border: "var(--verified-icon)", fg: "#fff", text: "var(--text-primary)" },
+  running: { bg: "var(--inconclusive-icon)", border: "var(--inconclusive-icon)", fg: "#fff", text: "var(--text-primary)" },
+  pending: { bg: "transparent", border: "var(--border-strong)", fg: "var(--border-strong)", text: "var(--text-muted)" },
+  failed:  { bg: "var(--notfixed-icon)", border: "var(--notfixed-icon)", fg: "#fff", text: "var(--text-primary)" },
 };
 
 function fmt(ms: number): string {
@@ -52,63 +52,59 @@ export default function VerificationTimeline({ steps }: Props) {
   return (
     <section className="pl-card">
       <div className="pl-card-header flex items-center justify-between">
-        <div>
-          <p className="pl-section-label">Verification Timeline</p>
-          <p className="mt-0.5" style={{ fontSize: 12, color: "var(--text-muted)" }}>
-            Step-by-step pipeline execution
-          </p>
-        </div>
+        <p className="pl-section-label">Pipeline</p>
         {totalMs > 0 && (
-          <span className="font-mono" style={{ fontSize: 12, color: "var(--text-muted)" }}>
-            {fmt(totalMs)} total
+          <span
+            className="font-mono"
+            style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "'IBM Plex Mono', monospace" }}
+          >
+            {fmt(totalMs)}
           </span>
         )}
       </div>
 
-      <ol className="px-6 py-4 space-y-0" aria-label="Verification steps">
+      <ol className="px-5 py-4 space-y-0" aria-label="Verification steps">
         {steps.map((step, idx) => {
           const c = STEP_COLORS[step.status];
           const isLast = idx === steps.length - 1;
           return (
-            <li key={step.id} className="flex gap-3.5">
+            <li key={step.id} className="flex gap-3">
               {/* Track */}
-              <div className="flex flex-col items-center flex-shrink-0">
+              <div className="flex flex-col items-center flex-shrink-0" style={{ width: 22 }}>
                 <div
-                  className="w-6 h-6 rounded-full border flex items-center justify-center flex-shrink-0"
+                  className="w-5 h-5 border flex items-center justify-center flex-shrink-0"
                   style={{
-                    background: step.status === "pending" ? "transparent" : c.circle,
-                    borderColor: step.status === "pending" ? "var(--border)" : c.circle,
-                    color:
-                      step.status === "pending"
-                        ? "var(--border-strong)"
-                        : "#fff",
+                    background: c.bg,
+                    borderColor: c.border,
+                    color: c.fg,
+                    borderRadius: 0,
                   }}
                   aria-hidden="true"
                 >
-                  {STEP_ICONS[step.status]}
+                  {STEP_ICON[step.status]}
                 </div>
                 {!isLast && (
                   <div
                     className="w-px flex-1 my-1"
-                    style={{ background: "var(--border)", minHeight: 20 }}
+                    style={{ background: "var(--border)", minHeight: 16 }}
                     aria-hidden="true"
                   />
                 )}
               </div>
 
               {/* Content */}
-              <div className={`${isLast ? "pb-0" : "pb-4"} min-w-0 flex-1 pt-0.5`}>
+              <div className={`${isLast ? "pb-0" : "pb-3.5"} min-w-0 flex-1 pt-0.5`}>
                 <div className="flex items-baseline gap-2 flex-wrap">
                   <span
                     className="text-sm font-medium"
-                    style={{ color: c.text }}
+                    style={{ fontSize: 13, color: c.text, fontFamily: "'IBM Plex Sans', sans-serif" }}
                   >
                     {step.label}
                   </span>
                   {step.durationMs !== undefined && (
                     <span
                       className="font-mono"
-                      style={{ fontSize: 11, color: c.meta }}
+                      style={{ fontSize: 10, color: "var(--verified-text)", fontFamily: "'IBM Plex Mono', monospace" }}
                     >
                       {fmt(step.durationMs)}
                     </span>
@@ -116,7 +112,7 @@ export default function VerificationTimeline({ steps }: Props) {
                 </div>
                 <p
                   className="mt-0.5 leading-relaxed"
-                  style={{ fontSize: 12, color: "var(--text-muted)" }}
+                  style={{ fontSize: 11.5, color: "var(--text-muted)" }}
                 >
                   {step.description}
                 </p>
@@ -125,6 +121,13 @@ export default function VerificationTimeline({ steps }: Props) {
           );
         })}
       </ol>
+
+      <style>{`
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.3; }
+        }
+      `}</style>
     </section>
   );
 }

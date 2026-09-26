@@ -17,31 +17,36 @@ export default function TestResultsSection({ results }: Props) {
         <div>
           <p className="pl-section-label">Existing Tests</p>
           <p className="mt-0.5" style={{ fontSize: 12, color: "var(--text-muted)" }}>
-            Full test suite executed after applying the patch
+            Test suite executed after applying the patch
           </p>
         </div>
-        {/* Summary badge */}
         <span
-          className="font-semibold rounded"
+          className="font-mono font-semibold"
           style={{
-            fontSize: 11,
-            padding: "3px 10px",
-            background: allPassed ? "#F0F7F2" : "#FDF2F2",
-            color: allPassed ? "#2F7D4A" : "#B54747",
-            border: `1px solid ${allPassed ? "#B8D9C4" : "#F0C0C0"}`,
+            fontSize: 10,
+            padding: "2px 8px",
+            background: allPassed ? "var(--verified-bg)" : "var(--notfixed-bg)",
+            color: allPassed ? "var(--verified-text)" : "var(--notfixed-text)",
+            border: `1px solid ${allPassed ? "var(--verified-border)" : "var(--notfixed-border)"}`,
+            letterSpacing: "0.04em",
+            fontFamily: "'IBM Plex Mono', monospace",
           }}
         >
-          {allPassed ? "Passed" : "Failed"}
+          {allPassed ? "PASSED" : "FAILED"}
         </span>
       </div>
 
-      <div className="px-6 py-5 space-y-4">
+      <div className="px-5 py-4 space-y-4">
         {/* Stats row */}
         <div className="flex items-center gap-5 flex-wrap">
           <div className="flex items-baseline gap-1.5">
             <span
-              className="font-mono font-semibold"
-              style={{ fontSize: 20, color: allPassed ? "#2F7D4A" : "#B54747" }}
+              className="font-mono font-bold"
+              style={{
+                fontSize: 22,
+                color: allPassed ? "var(--verified-text)" : "var(--notfixed-text)",
+                fontFamily: "'IBM Plex Mono', monospace",
+              }}
             >
               {results.passed}
             </span>
@@ -50,9 +55,12 @@ export default function TestResultsSection({ results }: Props) {
             </span>
           </div>
 
-          <div className="flex items-center gap-4 text-sm" style={{ color: "var(--text-secondary)" }}>
+          <div
+            className="flex items-center gap-4"
+            style={{ fontSize: 12, color: "var(--text-secondary)", fontFamily: "'IBM Plex Mono', monospace" }}
+          >
             <span>
-              Exit code{" "}
+              exit{" "}
               <span className="font-mono font-semibold">{results.exitCode}</span>
             </span>
             <span>
@@ -60,12 +68,11 @@ export default function TestResultsSection({ results }: Props) {
                 {results.durationMs >= 1000
                   ? `${(results.durationMs / 1000).toFixed(2)}s`
                   : `${results.durationMs}ms`}
-              </span>{" "}
-              duration
+              </span>
             </span>
             {results.timedOut && (
-              <span style={{ color: "#A66A1F", fontWeight: 600 }}>
-                Timed out
+              <span style={{ color: "var(--inconclusive-text)", fontWeight: 600 }}>
+                timed out
               </span>
             )}
           </div>
@@ -76,28 +83,28 @@ export default function TestResultsSection({ results }: Props) {
           <div>
             <button
               onClick={() => setExpanded((x) => !x)}
-              className="flex items-center gap-1.5 text-sm font-medium transition-colors"
-              style={{ color: "var(--text-secondary)" }}
+              className="flex items-center gap-1.5 font-medium transition-colors"
+              style={{ fontSize: 12, color: "var(--text-secondary)", background: "none", border: "none", cursor: "pointer", padding: 0 }}
               aria-expanded={expanded}
               aria-controls="test-output"
             >
               <svg
-                viewBox="0 0 12 12"
-                className="w-3 h-3 flex-shrink-0 transition-transform"
+                viewBox="0 0 10 10"
+                className="w-2.5 h-2.5 flex-shrink-0 transition-transform"
                 style={{ transform: expanded ? "rotate(90deg)" : "rotate(0)" }}
                 fill="none"
                 aria-hidden="true"
               >
-                <path d="M4 2l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M3 2l4 3-4 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-              {expanded ? "Hide" : "Show"} output
+              {expanded ? "Hide output" : "Show output"}
             </button>
 
             {expanded && (
               <div id="test-output" className="mt-3 space-y-3">
                 {results.stdout && (
                   <pre
-                    className="pl-code rounded p-3 overflow-x-auto max-h-56 overflow-y-auto"
+                    className="pl-code p-3 overflow-x-auto max-h-52 overflow-y-auto"
                     style={{
                       background: "var(--bg-secondary)",
                       border: "1px solid var(--border)",
@@ -109,11 +116,11 @@ export default function TestResultsSection({ results }: Props) {
                 )}
                 {results.stderr && (
                   <pre
-                    className="pl-code rounded p-3 overflow-x-auto max-h-56 overflow-y-auto"
+                    className="pl-code p-3 overflow-x-auto max-h-52 overflow-y-auto"
                     style={{
-                      background: "#FDF2F2",
-                      border: "1px solid #F0C0C0",
-                      color: "#8B3535",
+                      background: "var(--notfixed-bg)",
+                      border: "1px solid var(--notfixed-border)",
+                      color: "#a2191f",
                     }}
                   >
                     {results.stderr}
