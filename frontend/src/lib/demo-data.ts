@@ -52,23 +52,29 @@ export const demoJob: VerificationJob = {
   outcome: "VERIFIED",
 
   bugDescription:
-    "TypeError in `calculate_discount()` when `discount_rate` is None — " +
-    "the function attempts a multiplication with a NoneType, crashing on " +
-    "any order where no discount code is applied.",
+  "KeyError when looking up attendance for an unknown student. " +
+  "The application crashes instead of handling a missing student record.",
 
-  reproductionCommand: "pytest tests/test_pricing.py::test_null_discount -x",
+  reproductionCommand: "python reproduce.py",
 
-  patch: `--- a/src/pricing.py
-+++ b/src/pricing.py
-@@ -14,7 +14,7 @@ def calculate_discount(price: float, discount_rate: float | None) -> float:
--    return price * (1 - discount_rate)
-+    if discount_rate is None:
-+        return price
-+    return price * (1 - discount_rate)`,
+  patch: `--- a/app/student_service.py
++++ b/app/student_service.py
+@@
+ def get_student(student_id):
+-    return STUDENTS[student_id]
++    return STUDENTS.get(student_id)
+
+ def get_attendance(student_id):
+     student = get_student(student_id)
++
++    if student is None:
++        return None
++
+     return student["attendance"]`,
 
   originalExecution: {
     label: "Original (before patch)",
-    command: "pytest tests/test_pricing.py::test_null_discount -x",
+    command: "python reproduce.py",
     exitCode: 1,
     durationMs: 312,
     stdout: "collected 1 item\n\nFAILED tests/test_pricing.py::test_null_discount",
@@ -81,7 +87,7 @@ export const demoJob: VerificationJob = {
 
   patchedExecution: {
     label: "Patched (after fix)",
-    command: "pytest tests/test_pricing.py::test_null_discount -x",
+    command: "python reproduce.py",
     exitCode: 0,
     durationMs: 289,
     stdout: "collected 1 item\n\nPASSED tests/test_pricing.py::test_null_discount\n\n1 passed in 0.29s",
@@ -90,11 +96,11 @@ export const demoJob: VerificationJob = {
   },
 
   failureSignature: {
-    exceptionType: "TypeError",
-    message: "unsupported operand type(s) for *: 'float' and 'NoneType'",
-    sourceLocation: "src/pricing.py:17 in calculate_discount()",
-    reproductionInput: "calculate_discount(price=99.99, discount_rate=None)",
-  },
+  exceptionType: "KeyError",
+  message: "999",
+  sourceLocation: "app/student_service.py:10 in get_student()",
+  reproductionInput: "student_id=999",
+},
 
   timeline: [
     {
