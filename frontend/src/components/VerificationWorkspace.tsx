@@ -1,86 +1,144 @@
 import React from "react";
-import type { VerificationJob } from "@/lib/demo-data";
-import ResultBadge from "./ResultBadge";
+import type { VerificationJob } from "@/lib/types";
+import PatchViewer from "./PatchViewer";
 
 type Props = {
   job: VerificationJob;
   onVerify: () => void;
+  isVerifying?: boolean;
 };
 
-export default function VerificationWorkspace({ job, onVerify }: Props) {
+export default function VerificationWorkspace({ job, onVerify, isVerifying = false }: Props) {
   return (
-    <section className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-      <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between gap-4 flex-wrap">
-        <div>
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
-            Verification Workspace
-          </h2>
-          <p className="mt-1 text-xs text-gray-400 font-mono">Job ID: {job.id}</p>
-        </div>
-        {job.outcome && (
-          <ResultBadge outcome={job.outcome} large />
-        )}
+    <section className="pl-card" id="workspace" aria-label="Verification workspace">
+      <div className="pl-card-header">
+        <p className="pl-section-label">New Verification</p>
+        <p className="mt-0.5" style={{ fontSize: 12, color: "var(--text-muted)" }}>
+          Job {job.id}
+        </p>
       </div>
 
-      <div className="px-6 py-5 grid gap-6">
+      <div className="px-6 py-6 space-y-6">
+        {/* Repository */}
+        <div>
+          <label
+            className="pl-section-label block mb-2"
+            style={{ fontSize: 10 }}
+          >
+            Repository
+          </label>
+          <div
+            className="rounded px-3 py-2.5 font-mono"
+            style={{
+              fontSize: 12,
+              background: "var(--bg-secondary)",
+              border: "1px solid var(--border)",
+              color: "var(--text-secondary)",
+              wordBreak: "break-all",
+            }}
+          >
+            demo-repo
+          </div>
+        </div>
+
         {/* Bug description */}
         <div>
-          <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-            Original Bug / Failure Evidence
+          <label
+            className="pl-section-label block mb-2"
+            style={{ fontSize: 10 }}
+          >
+            Original Failure
           </label>
-          <p className="text-sm text-gray-800 leading-relaxed bg-gray-50 border border-gray-200 rounded p-4">
+          <p
+            className="rounded px-3 py-2.5 leading-relaxed"
+            style={{
+              fontSize: 13,
+              background: "var(--bg-secondary)",
+              border: "1px solid var(--border)",
+              color: "var(--text-primary)",
+            }}
+          >
             {job.bugDescription}
           </p>
         </div>
 
+        {/* Candidate patch */}
+        <div>
+          <label
+            className="pl-section-label block mb-2"
+            style={{ fontSize: 10 }}
+          >
+            Candidate Patch
+          </label>
+          <PatchViewer patch={job.patch} filename="candidate.diff" />
+        </div>
+
         {/* Reproduction command */}
         <div>
-          <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+          <label
+            className="pl-section-label block mb-2"
+            style={{ fontSize: 10 }}
+          >
             Reproduction Command
           </label>
-          <code className="block text-sm font-mono bg-gray-900 text-green-400 rounded px-4 py-3 whitespace-pre-wrap break-all">
-            $ {job.reproductionCommand}
-          </code>
+          <div
+            className="flex items-center gap-2 rounded px-3 py-2.5"
+            style={{
+              background: "#111827",
+              border: "1px solid #374151",
+            }}
+          >
+            <span style={{ color: "#4B5563", fontSize: 12, fontFamily: "monospace" }}>
+              $
+            </span>
+            <span
+              className="font-mono"
+              style={{ fontSize: 12, color: "#D1FAE5" }}
+            >
+              {job.reproductionCommand}
+            </span>
+          </div>
         </div>
 
-        {/* Patch */}
-        <div>
-          <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-            Candidate Patch (diff)
-          </label>
-          <pre className="text-xs font-mono bg-gray-950 text-gray-100 rounded p-4 overflow-x-auto leading-relaxed">
-            {job.patch.split("\n").map((line, i) => (
-              <span
-                key={i}
-                className={
-                  line.startsWith("+")
-                    ? "text-green-400 block"
-                    : line.startsWith("-")
-                    ? "text-red-400 block"
-                    : line.startsWith("@")
-                    ? "text-blue-400 block"
-                    : "text-gray-300 block"
-                }
-              >
-                {line}
-              </span>
-            ))}
-          </pre>
-        </div>
-
-        {/* CTA */}
-        <div className="flex items-center gap-4 pt-2">
+        {/* Actions */}
+        <div
+          className="flex items-center gap-4 pt-2"
+          style={{ borderTop: "1px solid var(--border)" }}
+        >
           <button
             onClick={onVerify}
-            className="px-6 py-2.5 bg-gray-900 text-white text-sm font-semibold rounded hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2"
+            disabled={isVerifying}
+            className="pl-btn-primary"
+            aria-label={isVerifying ? "Verification in progress" : "Run verification"}
           >
-            Verify Fix
+            {isVerifying ? (
+              <>
+                <span
+                  className="w-3.5 h-3.5 rounded-full border-2 border-white"
+                  style={{ borderTopColor: "transparent", animation: "spin 0.7s linear infinite" }}
+                  aria-hidden="true"
+                />
+                Verifying…
+              </>
+            ) : (
+              <>
+                <svg viewBox="0 0 14 14" className="w-3.5 h-3.5 flex-shrink-0" fill="none" aria-hidden="true">
+                  <path d="M3 2l9 5-9 5V2z" fill="currentColor" />
+                </svg>
+                Verify Fix
+              </>
+            )}
           </button>
-          <span className="text-xs text-gray-400">
-            Runs a deterministic end-to-end verification pipeline
-          </span>
+
+          <p style={{ fontSize: 12, color: "var(--text-muted)" }}>
+            Runs end-to-end deterministic verification
+          </p>
         </div>
       </div>
+
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+      `}</style>
     </section>
   );
 }

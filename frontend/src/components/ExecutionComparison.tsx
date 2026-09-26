@@ -1,60 +1,119 @@
 import React from "react";
-import type { ExecutionResult } from "@/lib/demo-data";
+import type { ExecutionResult } from "@/lib/types";
 
 type PanelProps = {
   exec: ExecutionResult;
 };
 
 function ExecutionPanel({ exec }: PanelProps) {
+  const statusColor = exec.failed ? "#B54747" : "#2F7D4A";
+  const statusBg = exec.failed ? "#FDF2F2" : "#F0F7F2";
+  const statusBorder = exec.failed ? "#F0C0C0" : "#B8D9C4";
+
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <h3 className="text-sm font-semibold text-gray-700">{exec.label}</h3>
-        <div className="flex items-center gap-3">
+    <div className="flex flex-col gap-4">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div className="min-w-0">
+          <p
+            className="font-semibold text-sm"
+            style={{ color: "var(--text-primary)" }}
+          >
+            {exec.label}
+          </p>
+          <code
+            className="mt-0.5 block font-mono"
+            style={{ fontSize: 12, color: "var(--text-muted)" }}
+          >
+            $ {exec.command}
+          </code>
+        </div>
+
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {/* Status pill */}
           <span
-            className={`text-xs font-mono font-semibold px-2 py-0.5 rounded border ${
-              exec.failed
-                ? "bg-red-50 text-red-700 border-red-200"
-                : "bg-green-50 text-green-700 border-green-200"
-            }`}
+            className="font-semibold font-mono rounded"
+            style={{
+              fontSize: 11,
+              padding: "2px 8px",
+              background: statusBg,
+              color: statusColor,
+              border: `1px solid ${statusBorder}`,
+            }}
+          >
+            {exec.failed ? "FAILED" : "PASSED"}
+          </span>
+          {/* Exit code */}
+          <span
+            className="font-mono rounded"
+            style={{
+              fontSize: 11,
+              padding: "2px 7px",
+              background: "var(--bg-secondary)",
+              color: "var(--text-secondary)",
+              border: "1px solid var(--border)",
+            }}
           >
             exit {exec.exitCode}
           </span>
-          <span className="text-xs text-gray-400 font-mono">{exec.durationMs} ms</span>
+          {/* Duration */}
           <span
-            className={`text-xs font-semibold ${
-              exec.failed ? "text-red-600" : "text-green-600"
-            }`}
+            className="font-mono"
+            style={{ fontSize: 11, color: "var(--text-muted)" }}
           >
-            {exec.failed ? "FAILED" : "PASSED"}
+            {exec.durationMs}ms
           </span>
         </div>
       </div>
 
-      <code className="block text-xs font-mono bg-gray-900 text-green-400 rounded px-3 py-2">
-        $ {exec.command}
-      </code>
-
+      {/* stdout */}
       {exec.stdout && (
         <div>
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">
+          <p
+            className="pl-section-label mb-1.5"
+            style={{ fontSize: 10 }}
+          >
             stdout
           </p>
-          <pre className="text-xs font-mono bg-gray-50 border border-gray-200 rounded p-3 whitespace-pre-wrap text-gray-700 leading-relaxed">
+          <pre
+            className="pl-code rounded overflow-x-auto max-h-40 overflow-y-auto p-3 leading-relaxed"
+            style={{
+              background: "var(--bg-secondary)",
+              border: "1px solid var(--border)",
+              color: "var(--text-secondary)",
+            }}
+          >
             {exec.stdout}
           </pre>
         </div>
       )}
 
+      {/* stderr */}
       {exec.stderr && (
         <div>
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">
+          <p
+            className="pl-section-label mb-1.5"
+            style={{ fontSize: 10, color: "#B54747" }}
+          >
             stderr
           </p>
-          <pre className="text-xs font-mono bg-red-50 border border-red-200 rounded p-3 whitespace-pre-wrap text-red-700 leading-relaxed">
+          <pre
+            className="pl-code rounded overflow-x-auto max-h-40 overflow-y-auto p-3 leading-relaxed"
+            style={{
+              background: "#FDF2F2",
+              border: "1px solid #F0C0C0",
+              color: "#8B3535",
+            }}
+          >
             {exec.stderr}
           </pre>
         </div>
+      )}
+
+      {!exec.stdout && !exec.stderr && (
+        <p style={{ fontSize: 12, color: "var(--text-muted)", fontStyle: "italic" }}>
+          No output captured.
+        </p>
       )}
     </div>
   );
@@ -67,15 +126,21 @@ type Props = {
 
 export default function ExecutionComparison({ original, patched }: Props) {
   return (
-    <section className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-      <div className="px-6 py-4 border-b border-gray-100">
-        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
-          Execution Comparison
-        </h2>
+    <section className="pl-card">
+      <div className="pl-card-header">
+        <p className="pl-section-label">Execution Evidence</p>
+        <p className="mt-0.5" style={{ fontSize: 12, color: "var(--text-muted)" }}>
+          Side-by-side comparison of original and patched runs
+        </p>
       </div>
-      <div className="px-6 py-5 grid md:grid-cols-2 gap-6 divide-y md:divide-y-0 md:divide-x divide-gray-100">
-        <ExecutionPanel exec={original} />
-        <div className="pt-6 md:pt-0 md:pl-6">
+      <div
+        className="grid md:grid-cols-2 divide-y md:divide-y-0 md:divide-x"
+        style={{ borderColor: "var(--border)" }}
+      >
+        <div className="p-6">
+          <ExecutionPanel exec={original} />
+        </div>
+        <div className="p-6">
           <ExecutionPanel exec={patched} />
         </div>
       </div>

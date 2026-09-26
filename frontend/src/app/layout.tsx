@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "PatchLens",
-  description: "Intelligent patch verification and analysis platform",
+  title: "PatchLens — Patch Verification Engine",
+  description:
+    "Independently verify whether an AI-generated code fix actually resolves the original software failure.",
 };
 
 export default function RootLayout({
@@ -13,7 +14,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="min-h-screen bg-gray-50 text-gray-900 antialiased">
+      <body className="min-h-screen antialiased" style={{ background: "var(--bg-page)" }}>
         {children}
       </body>
     </html>
