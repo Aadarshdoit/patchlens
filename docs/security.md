@@ -1,5 +1,10 @@
 # PatchLens Security Model
 
+> **Version note:** This document covers both the original path-based
+> verification flow (`POST /api/verify`) and the new ZIP upload flow
+> (`POST /api/upload-verify`) added in the productisation pass.
+
+
 PatchLens is a **hackathon prototype**. This document describes its actual
 security posture honestly. It does **not** claim production-grade sandboxing.
 
@@ -15,6 +20,8 @@ security posture honestly. It does **not** claim production-grade sandboxing.
 | `patch_file` path | API request body | High – path traversal, read arbitrary files |
 | `reproduction_command` | API request body | Critical – arbitrary command execution |
 | Patch file contents | Filesystem read | Medium – malformed diff, embedded special characters |
+| Uploaded ZIP archive | Multipart form body | High – path traversal, zip bomb, malicious archive entries |
+| Uploaded patch file | Multipart form body | Medium – malformed diff, oversized content |
 
 ### Main risks
 
@@ -64,6 +71,78 @@ security posture honestly. It does **not** claim production-grade sandboxing.
 10. **Running arbitrary public repositories** – There is no repository
     allowlist at the clone or fetch stage.  The current prototype is intended
     to verify only local, pre-approved repositories.
+
+---
+
+## ZIP Upload Security (`POST /api/upload-verify`)
+
+When a user uploads a project ZIP, the following protections are applied
+before any code is executed:
+
+### Path Traversal Prevention
+
+Every archive member name is checked before extraction:
+
+- Members containing `..` path components are rejected.
+- Members with absolute paths (Unix `/` prefix or Windows drive letters
+  such as `C:`) are rejected.
+- Any member whose normalised name escapes the extraction root is rejected.
+
+A `WorkspaceError` is raised and a clean HTTP 400 is returned; no files are
+extracted.
+
+### Symlink Rejection
+
+Archive members whose Unix mode bits identify them as symbolic links are
+rejected.
+
+### Size Limits
+
+| Limit | Value |
+|---|---|
+| Maximum compressed ZIP size | 50 MB |
+| Maximum total extracted size | 200 MB |
+| Maximum archive member count | 5 000 |
+
+Exceeding any limit returns HTTP 400 without extracting.
+
+### Isolated Temporary Workspace
+
+Extracted projects are placed under a fresh `tempfile.mkdtemp()` directory
+with the prefix `patchlens-upload-`.  This directory is:
+
+- Outside the PatchLens source tree.
+- Never returned or exposed to the frontend (only the verification result is
+  returned).
+- Deleted unconditionally in a `finally` block after verification, whether
+  verification succeeds, fails, or raises an exception.
+
+The patch file uploaded by the user is also written into the same temporary
+workspace directory and deleted as part of the cleanup.
+
+### No Automatic Dependency Installation
+
+The prototype does **not**:
+
+- Execute `setup.py`.
+- Read or execute `requirements.txt`.
+- Run `pip install`, `npm install`, or any other package manager.
+- Execute any post-extraction scripts.
+
+The project is used as-is.  If the project has dependencies that are not
+already installed, the reproduction script will fail with a module-not-found
+error, which PatchLens will capture and report as a non-zero exit code.
+
+### Reproduction Command Constraint
+
+For uploaded projects the reproduction command is always
+`["python", repro_script]` where `repro_script` is the user-supplied
+filename.  Constraints:
+
+- `repro_script` must not contain path separators (`/` or `\`) or `..`.
+- `repro_script` must end with `.py`.
+- The first token (`python`) is always in `ALLOWED_COMMANDS`; validation
+  against the allowlist still occurs in `run_command`.
 
 ---
 

@@ -47,6 +47,14 @@ export interface VerifyResponse {
   ai_analysis: string;
 }
 
+// Request shape for the ZIP upload endpoint (POST /api/upload-verify).
+// Sent as multipart/form-data by uploadAndVerify() in api.ts.
+export interface UploadVerifyParams {
+  projectZip: File;
+  patchFile: File;
+  reproScript: string;
+}
+
 // ---------------------------------------------------------------------------
 // UI-layer types (derived from / mapped from the API response)
 // ---------------------------------------------------------------------------

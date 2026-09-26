@@ -2,6 +2,7 @@
 
 import React, { useRef, useState } from "react";
 import Header from "@/components/Header";
+import VerificationInput, { type InputMode, type UploadInputs } from "@/components/VerificationInput";
 import VerificationWorkspace from "@/components/VerificationWorkspace";
 import VerificationTimeline from "@/components/VerificationTimeline";
 import VerdictCard from "@/components/VerdictCard";
@@ -12,35 +13,165 @@ import TestResultsSection from "@/components/TestResultsSection";
 import SuspiciousChecks from "@/components/SuspiciousChecks";
 import AIAnalysisSection from "@/components/AIAnalysisSection";
 import { demoJob } from "@/lib/demo-data";
-import { verifyPatch } from "@/lib/api";
-import type { VerificationJob } from "@/lib/types";
+import { verifyPatch, uploadAndVerify } from "@/lib/api";
+import type { VerificationJob, VerifyResponse } from "@/lib/types";
+
+// ---------------------------------------------------------------------------
+// Helper: map a raw VerifyResponse onto the VerificationJob shape
+// ---------------------------------------------------------------------------
+
+function applyResponseToJob(
+  current: VerificationJob,
+  data: VerifyResponse
+): VerificationJob {
+  return {
+    ...current,
+    status: "complete",
+    outcome: data.status ?? "INCONCLUSIVE",
+    reason: typeof data.reason === "string" ? data.reason : null,
+
+    originalExecution: {
+      ...current.originalExecution,
+      exitCode: data.original.exit_code ?? 1,
+      durationMs: Math.round((data.original.duration ?? 0) * 1000),
+      stdout: data.original.stdout ?? "",
+      stderr: data.original.stderr ?? "",
+      failed: (data.original.exit_code ?? 1) !== 0,
+    },
+
+    patchedExecution: {
+      ...current.patchedExecution,
+      exitCode: data.patched.exit_code ?? 0,
+      durationMs: Math.round((data.patched.duration ?? 0) * 1000),
+      stdout: data.patched.stdout ?? "",
+      stderr: data.patched.stderr ?? "",
+      failed: (data.patched.exit_code ?? 0) !== 0,
+    },
+
+    testResults: data.tests
+      ? {
+          passed: data.tests.passed ?? 0,
+          exitCode: data.tests.exit_code ?? 0,
+          durationMs: Math.round((data.tests.duration ?? 0) * 1000),
+          stdout: data.tests.stdout ?? "",
+          stderr: data.tests.stderr ?? "",
+          timedOut: data.tests.timed_out ?? false,
+        }
+      : null,
+
+    suspiciousChecks: Array.isArray(data.suspicious_checks)
+      ? data.suspicious_checks
+      : current.suspiciousChecks,
+
+    aiAnalysis:
+      typeof data.ai_analysis === "string" ? data.ai_analysis : null,
+
+    timeline: current.timeline.map((step) => ({
+      ...step,
+      status: "done" as const,
+    })),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Helper: build a text/JSON verification report for download
+// ---------------------------------------------------------------------------
+
+function buildReport(job: VerificationJob, projectName: string): string {
+  return JSON.stringify(
+    {
+      patchlens_report: "1.0",
+      project: projectName,
+      timestamp: new Date().toISOString(),
+      reproduction_command: job.reproductionCommand,
+      verdict: job.outcome,
+      reason: job.reason,
+      original_failure: {
+        exit_code: job.originalExecution.exitCode,
+        duration_ms: job.originalExecution.durationMs,
+        stdout: job.originalExecution.stdout,
+        stderr: job.originalExecution.stderr,
+      },
+      patched_execution: {
+        exit_code: job.patchedExecution.exitCode,
+        duration_ms: job.patchedExecution.durationMs,
+        stdout: job.patchedExecution.stdout,
+        stderr: job.patchedExecution.stderr,
+      },
+      failure_signature: job.failureSignature,
+      test_results: job.testResults,
+      suspicious_checks: job.suspiciousChecks,
+      ai_advisory: job.aiAnalysis,
+    },
+    null,
+    2
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Page
+// ---------------------------------------------------------------------------
 
 export default function Home() {
-  const workspaceRef = useRef<HTMLDivElement>(null);
+  const resultsRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLDivElement>(null);
+
   const [job, setJob] = useState<VerificationJob>(demoJob);
   const [isVerifying, setIsVerifying] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Keep a stable ref to the current job params so runVerification always
-  // reads the latest values regardless of when React schedules a re-render.
+  // Input mode: demo or upload
+  const [inputMode, setInputMode] = useState<InputMode>("demo");
+  const [uploadInputs, setUploadInputs] = useState<UploadInputs>({
+    projectZip: null,
+    patchFile: null,
+    reproScript: "reproduce.py",
+  });
+
+  // Keep a stable ref to current job for async handlers
   const jobRef = useRef(job);
   jobRef.current = job;
 
-  function scrollToWorkspace() {
-    workspaceRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  // Keep a stable ref to upload inputs for async handlers
+  const uploadInputsRef = useRef(uploadInputs);
+  uploadInputsRef.current = uploadInputs;
+
+  function scrollToResults() {
+    setTimeout(
+      () => resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }),
+      100
+    );
   }
 
-  async function runVerification() {
-    // Prevent duplicate submissions while a verification is already running.
-    if (isVerifying) return;
+  function scrollToInput() {
+    inputRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 
-    setIsVerifying(true);
-    setError(null);
+  // Common post-response logic
+  function handleVerifySuccess(data: VerifyResponse) {
+    if (!data || typeof data !== "object" || !data.original || !data.patched) {
+      throw new Error("Unexpected response from verification engine.");
+    }
+    setJob((current) => applyResponseToJob(current, data));
+    scrollToResults();
+  }
 
-    // Read request params from ref so we always use the current job values,
-    // not a stale closure snapshot.
-    const { repository, patchFile, reproductionCommand } = jobRef.current;
+  function handleVerifyError(err: unknown) {
+    const msg = err instanceof Error ? err.message : "Unknown error occurred.";
+    setError(msg);
+    setJob((prev) => ({
+      ...prev,
+      status: "idle",
+      timeline: prev.timeline.map((step) => ({
+        ...step,
+        status: "pending" as const,
+        durationMs: undefined,
+      })),
+    }));
+  }
 
+  // Reset job to running state
+  function startRunningState() {
     setJob((prev) => ({
       ...prev,
       status: "running",
@@ -51,83 +182,78 @@ export default function Home() {
           : { ...step, status: "pending", durationMs: undefined }
       ),
     }));
+  }
 
+  // ── PATH A: demo verification ──
+  async function runDemoVerification() {
+    if (isVerifying) return;
+    setIsVerifying(true);
+    setError(null);
+    startRunningState();
+    const { repository, patchFile, reproductionCommand } = jobRef.current;
     try {
       const data = await verifyPatch({
         repository,
         patch_file: patchFile,
         reproduction_command: reproductionCommand.split(" "),
       });
-
-      // Guard: ensure the response has the required execution fields before mapping.
-      if (!data || typeof data !== "object" || !data.original || !data.patched) {
-        throw new Error("Unexpected response from verification engine.");
-      }
-
-      setJob((current) => ({
-        ...current,
-        status: "complete",
-        outcome: data.status ?? "INCONCLUSIVE",
-        reason: typeof data.reason === "string" ? data.reason : null,
-
-        originalExecution: {
-          ...current.originalExecution,
-          exitCode: data.original.exit_code ?? 1,
-          durationMs: Math.round((data.original.duration ?? 0) * 1000),
-          stdout: data.original.stdout ?? "",
-          stderr: data.original.stderr ?? "",
-          failed: (data.original.exit_code ?? 1) !== 0,
-        },
-
-        patchedExecution: {
-          ...current.patchedExecution,
-          exitCode: data.patched.exit_code ?? 0,
-          durationMs: Math.round((data.patched.duration ?? 0) * 1000),
-          stdout: data.patched.stdout ?? "",
-          stderr: data.patched.stderr ?? "",
-          failed: (data.patched.exit_code ?? 0) !== 0,
-        },
-
-        testResults: data.tests
-          ? {
-              passed: data.tests.passed ?? 0,
-              exitCode: data.tests.exit_code ?? 0,
-              durationMs: Math.round((data.tests.duration ?? 0) * 1000),
-              stdout: data.tests.stdout ?? "",
-              stderr: data.tests.stderr ?? "",
-              timedOut: data.tests.timed_out ?? false,
-            }
-          : null,
-
-        suspiciousChecks: Array.isArray(data.suspicious_checks)
-          ? data.suspicious_checks
-          : current.suspiciousChecks,
-
-        aiAnalysis:
-          typeof data.ai_analysis === "string" ? data.ai_analysis : null,
-
-        timeline: current.timeline.map((step) => ({
-          ...step,
-          status: "done" as const,
-        })),
-      }));
+      handleVerifySuccess(data);
     } catch (err) {
-      const msg =
-        err instanceof Error ? err.message : "Unknown error occurred.";
-
-      setError(msg);
-      setJob((prev) => ({
-        ...prev,
-        status: "idle",
-        timeline: prev.timeline.map((step) => ({
-          ...step,
-          status: "pending" as const,
-          durationMs: undefined,
-        })),
-      }));
+      handleVerifyError(err);
     } finally {
       setIsVerifying(false);
     }
+  }
+
+  // ── PATH B: upload verification ──
+  async function runUploadVerification() {
+    if (isVerifying) return;
+    const inputs = uploadInputsRef.current;
+    if (!inputs.projectZip || !inputs.patchFile || !inputs.reproScript.trim()) {
+      setError("Please select a project ZIP, a patch file, and enter a reproduction script name.");
+      return;
+    }
+    setIsVerifying(true);
+    setError(null);
+    startRunningState();
+    try {
+      const data = await uploadAndVerify({
+        projectZip: inputs.projectZip,
+        patchFile: inputs.patchFile,
+        reproScript: inputs.reproScript.trim(),
+      });
+      handleVerifySuccess(data);
+    } catch (err) {
+      handleVerifyError(err);
+    } finally {
+      setIsVerifying(false);
+    }
+  }
+
+  // Unified handler for the hero-strip top button
+  function handleTopVerify() {
+    scrollToInput();
+    if (inputMode === "demo") {
+      runDemoVerification();
+    } else {
+      runUploadVerification();
+    }
+  }
+
+  // Report download
+  function downloadReport() {
+    const name =
+      inputMode === "upload" && uploadInputs.projectZip
+        ? uploadInputs.projectZip.name.replace(/\.zip$/i, "")
+        : "demo-attendance";
+    const content = buildReport(job, name);
+    const blob = new Blob([content], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `patchlens-report-${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   const showResults = job.status === "complete" && job.outcome !== null;
@@ -222,8 +348,12 @@ export default function Home() {
                 <span
                   className="w-1.5 h-1.5 rounded-full flex-shrink-0"
                   style={{
-                    background: isVerifying ? "var(--inconclusive-icon)" : "var(--verified-icon)",
-                    animation: isVerifying ? "statusPulse 1.5s ease-in-out infinite" : "none",
+                    background: isVerifying
+                      ? "var(--inconclusive-icon)"
+                      : "var(--verified-icon)",
+                    animation: isVerifying
+                      ? "statusPulse 1.5s ease-in-out infinite"
+                      : "none",
                   }}
                   aria-hidden="true"
                 />
@@ -239,10 +369,12 @@ export default function Home() {
               </div>
 
               <button
-                onClick={() => { scrollToWorkspace(); runVerification(); }}
+                onClick={handleTopVerify}
                 disabled={isVerifying}
                 className="pl-btn-primary"
-                aria-label={isVerifying ? "Verification in progress" : "Run verification pipeline"}
+                aria-label={
+                  isVerifying ? "Verification in progress" : "Run verification pipeline"
+                }
               >
                 {isVerifying ? "Verifying…" : "Verify a patch"}
               </button>
@@ -270,14 +402,23 @@ export default function Home() {
               aria-hidden="true"
             >
               <circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="1.4" />
-              <path d="M7 4v3.5M7 9.5v.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+              <path
+                d="M7 4v3.5M7 9.5v.5"
+                stroke="currentColor"
+                strokeWidth="1.4"
+                strokeLinecap="round"
+              />
             </svg>
             <div>
               <p
                 className="font-semibold"
-                style={{ fontSize: 13, color: "var(--notfixed-text)", fontFamily: "'IBM Plex Sans', sans-serif" }}
+                style={{
+                  fontSize: 13,
+                  color: "var(--notfixed-text)",
+                  fontFamily: "'IBM Plex Sans', sans-serif",
+                }}
               >
-                Verification engine unavailable
+                Verification failed
               </p>
               <p
                 className="mt-1 leading-relaxed"
@@ -295,55 +436,99 @@ export default function Home() {
           </section>
         )}
 
-        {/* ── Workspace + Timeline ─────────────────────────────────── */}
-        <div ref={workspaceRef} className="grid lg:grid-cols-[1fr_300px] gap-6 items-start">
-          <VerificationWorkspace
-            job={job}
-            onVerify={runVerification}
+        {/* ── Input panel + Timeline ────────────────────────────────── */}
+        <div ref={inputRef} className="grid lg:grid-cols-[1fr_300px] gap-6 items-start">
+          <VerificationInput
+            mode={inputMode}
+            onModeChange={(m) => {
+              setInputMode(m);
+              setError(null);
+            }}
+            uploadInputs={uploadInputs}
+            onUploadInputsChange={setUploadInputs}
+            onRunDemo={runDemoVerification}
+            onRunUpload={runUploadVerification}
             isVerifying={isVerifying}
           />
           <VerificationTimeline steps={job.timeline} />
         </div>
 
-        {/* ── Verdict ──────────────────────────────────────────────── */}
-        {showResults && job.outcome && (
-          <VerdictCard outcome={job.outcome} reason={job.reason} />
-        )}
-
-        {/* ── Evidence summary ─────────────────────────────────────── */}
-        {showResults && (
-          <EvidenceSummary job={job} />
-        )}
-
-        {/* ── Execution comparison ─────────────────────────────────── */}
-        {showResults && (
-          <ExecutionComparison
-            original={job.originalExecution}
-            patched={job.patchedExecution}
+        {/* ── Original workspace (always visible for demo context) ───── */}
+        {inputMode === "demo" && (
+          <VerificationWorkspace
+            job={job}
+            onVerify={runDemoVerification}
+            isVerifying={isVerifying}
           />
         )}
 
-        {/* ── Failure signature + Tests ────────────────────────────── */}
-        {showResults && (
-          <div className="grid md:grid-cols-2 gap-6">
-            <FailureSignature sig={job.failureSignature} />
-            {job.testResults && (
-              <TestResultsSection results={job.testResults} />
-            )}
-          </div>
-        )}
+        {/* ── Results ──────────────────────────────────────────────── */}
+        <div ref={resultsRef}>
+          {/* ── Verdict ── */}
+          {showResults && job.outcome && (
+            <div className="space-y-6">
+              <VerdictCard outcome={job.outcome} reason={job.reason} />
 
-        {/* ── Patch Integrity + AI Analysis ────────────────────────── */}
-        {showResults && (
-          <div className="grid md:grid-cols-2 gap-6">
-            {job.suspiciousChecks.length > 0 && (
-              <SuspiciousChecks checks={job.suspiciousChecks} />
-            )}
-            {job.aiAnalysis && (
-              <AIAnalysisSection analysis={job.aiAnalysis} />
-            )}
-          </div>
-        )}
+              {/* Download report */}
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={downloadReport}
+                  className="pl-btn-secondary"
+                  style={{ fontSize: 12, padding: "7px 14px" }}
+                >
+                  <svg
+                    viewBox="0 0 14 14"
+                    className="w-3.5 h-3.5 flex-shrink-0"
+                    fill="none"
+                    aria-hidden="true"
+                  >
+                    <path
+                      d="M7 2v7M4 7l3 3 3-3M2 11h10"
+                      stroke="currentColor"
+                      strokeWidth="1.3"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                  Download verification report
+                </button>
+                <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
+                  JSON · execution evidence + verdict
+                </span>
+              </div>
+
+              {/* ── Evidence summary ── */}
+              <EvidenceSummary job={job} />
+
+              {/* ── Execution comparison ── */}
+              <ExecutionComparison
+                original={job.originalExecution}
+                patched={job.patchedExecution}
+              />
+
+              {/* ── Failure signature + Tests ── */}
+              <div className="grid md:grid-cols-2 gap-6">
+                <FailureSignature sig={job.failureSignature} />
+                {job.testResults && (
+                  <TestResultsSection results={job.testResults} />
+                )}
+              </div>
+
+              {/* ── Suspicious checks + AI ── */}
+              {(job.suspiciousChecks.length > 0 || job.aiAnalysis) && (
+                <div className="grid md:grid-cols-2 gap-6">
+                  {job.suspiciousChecks.length > 0 && (
+                    <SuspiciousChecks checks={job.suspiciousChecks} />
+                  )}
+                  {job.aiAnalysis && (
+                    <AIAnalysisSection analysis={job.aiAnalysis} />
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </main>
 
       <footer

@@ -19,6 +19,34 @@ function buildEvidenceItems(job: VerificationJob): EvidenceItem[] {
   const originalFailed = original.failed;
   const patchedPassed = !patched.failed;
 
+  // Derive the correct patched-execution label from the backend verdict, not
+  // just from the raw exit code.  The comparator distinguishes three cases:
+  //   failure_resolved  → patched exit 0               → outcome VERIFIED (or INCONCLUSIVE if tests fail)
+  //   failure_persists  → patched exit non-0, same err → outcome NOT_FIXED
+  //   different_failure → patched exit non-0, diff err → outcome INCONCLUSIVE
+  // We use outcome + patchedPassed to pick the right wording so the evidence
+  // summary never contradicts the verdict reason.
+  let patchedLabel: string;
+  let patchedMet: boolean;
+  let patchedDetail: string;
+
+  if (patchedPassed) {
+    // Exit 0 — original failure resolved regardless of outcome
+    patchedLabel = "Original failure resolved";
+    patchedMet = true;
+    patchedDetail = `Exit code ${patched.exitCode}`;
+  } else if (job.outcome === "NOT_FIXED") {
+    // Same exception + same message persists
+    patchedLabel = "Original failure still occurs after patch";
+    patchedMet = false;
+    patchedDetail = `Exit code ${patched.exitCode}`;
+  } else {
+    // INCONCLUSIVE: patched run failed but with a different error
+    patchedLabel = "Original failure changed to a different failure";
+    patchedMet = false;
+    patchedDetail = `Exit code ${patched.exitCode} — different error`;
+  }
+
   const checks: EvidenceItem[] = [
     {
       label: "Original failure reproduced",
@@ -33,11 +61,9 @@ function buildEvidenceItems(job: VerificationJob): EvidenceItem[] {
       detail: "Diff applied to clean working copy",
     },
     {
-      label: "Original failure resolved",
-      met: patchedPassed,
-      detail: patchedPassed
-        ? `Exit code ${patched.exitCode}`
-        : "Failure still present after patch",
+      label: patchedLabel,
+      met: patchedMet,
+      detail: patchedDetail,
     },
   ];
 
