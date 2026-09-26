@@ -21,13 +21,25 @@ export default function Home() {
   const [isVerifying, setIsVerifying] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Keep a stable ref to the current job params so runVerification always
+  // reads the latest values regardless of when React schedules a re-render.
+  const jobRef = useRef(job);
+  jobRef.current = job;
+
   function scrollToWorkspace() {
     workspaceRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   async function runVerification() {
+    // Prevent duplicate submissions while a verification is already running.
+    if (isVerifying) return;
+
     setIsVerifying(true);
     setError(null);
+
+    // Read request params from ref so we always use the current job values,
+    // not a stale closure snapshot.
+    const { repository, patchFile, reproductionCommand } = jobRef.current;
 
     setJob((prev) => ({
       ...prev,
@@ -42,39 +54,44 @@ export default function Home() {
 
     try {
       const data = await verifyPatch({
-        repository: job.repository,
-        patch_file: job.patchFile,
-        reproduction_command: job.reproductionCommand.split(" "),
+        repository,
+        patch_file: patchFile,
+        reproduction_command: reproductionCommand.split(" "),
       });
+
+      // Guard: ensure the response has the required execution fields before mapping.
+      if (!data || typeof data !== "object" || !data.original || !data.patched) {
+        throw new Error("Unexpected response from verification engine.");
+      }
 
       setJob((current) => ({
         ...current,
         status: "complete",
-        outcome: data.status,
-        reason: data.reason ?? null,
+        outcome: data.status ?? "INCONCLUSIVE",
+        reason: typeof data.reason === "string" ? data.reason : null,
 
         originalExecution: {
           ...current.originalExecution,
-          exitCode: data.original.exit_code,
-          durationMs: Math.round(data.original.duration * 1000),
-          stdout: data.original.stdout,
-          stderr: data.original.stderr,
-          failed: data.original.exit_code !== 0,
+          exitCode: data.original.exit_code ?? 1,
+          durationMs: Math.round((data.original.duration ?? 0) * 1000),
+          stdout: data.original.stdout ?? "",
+          stderr: data.original.stderr ?? "",
+          failed: (data.original.exit_code ?? 1) !== 0,
         },
 
         patchedExecution: {
           ...current.patchedExecution,
-          exitCode: data.patched.exit_code,
-          durationMs: Math.round(data.patched.duration * 1000),
-          stdout: data.patched.stdout,
-          stderr: data.patched.stderr,
-          failed: data.patched.exit_code !== 0,
+          exitCode: data.patched.exit_code ?? 0,
+          durationMs: Math.round((data.patched.duration ?? 0) * 1000),
+          stdout: data.patched.stdout ?? "",
+          stderr: data.patched.stderr ?? "",
+          failed: (data.patched.exit_code ?? 0) !== 0,
         },
 
         testResults: data.tests
           ? {
               passed: data.tests.passed ?? 0,
-              exitCode: data.tests.exit_code,
+              exitCode: data.tests.exit_code ?? 0,
               durationMs: Math.round((data.tests.duration ?? 0) * 1000),
               stdout: data.tests.stdout ?? "",
               stderr: data.tests.stderr ?? "",
@@ -222,10 +239,12 @@ export default function Home() {
               </div>
 
               <button
-                onClick={scrollToWorkspace}
+                onClick={() => { scrollToWorkspace(); runVerification(); }}
+                disabled={isVerifying}
                 className="pl-btn-primary"
+                aria-label={isVerifying ? "Verification in progress" : "Run verification pipeline"}
               >
-                Verify a patch
+                {isVerifying ? "Verifying…" : "Verify a patch"}
               </button>
             </div>
           </div>

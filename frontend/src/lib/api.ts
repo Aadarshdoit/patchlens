@@ -28,12 +28,16 @@ export async function verifyPatch(req: VerifyRequest): Promise<VerifyResponse> {
 }
 
 export async function checkHealth(): Promise<boolean> {
+  const controller = new AbortController();
+  const timerId = setTimeout(() => controller.abort(), 3000);
   try {
     const response = await fetch(`${API_BASE_URL}/health`, {
-      signal: AbortSignal.timeout(3000),
+      signal: controller.signal,
     });
     return response.ok;
   } catch {
     return false;
+  } finally {
+    clearTimeout(timerId);
   }
 }
