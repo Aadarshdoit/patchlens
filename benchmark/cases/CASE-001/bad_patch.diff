@@ -1,0 +1,13 @@
+diff --git a/app/student_service.py b/app/student_service.py
+index 5c8136a..f6b0969 100644
+--- a/app/student_service.py
++++ b/app/student_service.py
+@@ -7,7 +7,7 @@ STUDENTS = {
+ 
+ 
+ def get_student(student_id):
+-    return STUDENTS[student_id]
++    return STUDENTS.get(student_id)
+ 
+ 
+ def get_attendance(student_id):

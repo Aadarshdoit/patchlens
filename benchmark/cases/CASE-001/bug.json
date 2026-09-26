@@ -1,0 +1,14 @@
+{
+  "id": "CASE-001",
+  "title": "Unknown student crashes attendance lookup",
+  "repository": "demo-repo",
+  "reproduction_command": [
+    "python",
+    "reproduce.py"
+  ],
+  "original_failure": {
+    "exception": "KeyError",
+    "message": "999"
+  },
+  "description": "Looking up attendance for an unknown student crashes instead of handling the missing student."
+}

@@ -1,0 +1,20 @@
+diff --git a/app/student_service.py b/app/student_service.py
+index 5c8136a..dce2ee2 100644
+--- a/app/student_service.py
++++ b/app/student_service.py
+@@ -7,9 +7,13 @@ STUDENTS = {
+ 
+ 
+ def get_student(student_id):
+-    return STUDENTS[student_id]
++    return STUDENTS.get(student_id)
+ 
+ 
+ def get_attendance(student_id):
+     student = get_student(student_id)
++
++    if student is None:
++        return None
++
+     return student["attendance"]
+\ No newline at end of file
