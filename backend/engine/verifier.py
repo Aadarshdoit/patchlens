@@ -1,5 +1,5 @@
 from engine.comparator import compare_execution
-from engine.patcher import create_patched_copy
+from engine.patcher import cleanup_patched_copy, create_patched_copy
 from engine.pytest_runner import run_pytest
 from engine.reproducer import run_command
 from engine.suspicious_fix import analyze_patch
@@ -22,32 +22,38 @@ def verify_patch(
         patch_file,
     )
 
-    patched_result = run_command(
-        reproduction_command,
-        patched_repository,
-    )
+    try:
+        patched_result = run_command(
+            reproduction_command,
+            patched_repository,
+        )
 
-    test_result = run_pytest(
-        patched_repository,
-    )
+        test_result = run_pytest(
+            patched_repository,
+        )
 
-    with open(patch_file, "r", encoding="utf-8") as file:
-        patch_content = file.read()
+        with open(patch_file, "r", encoding="utf-8") as file:
+            patch_content = file.read()
 
-    suspicious_checks = analyze_patch(patch_content)
+        suspicious_checks = analyze_patch(patch_content)
 
-    comparison = compare_execution(
-        original_result,
-        patched_result,
-    )
+        comparison = compare_execution(
+            original_result,
+            patched_result,
+        )
 
-    verdict = determine_verdict(
-        comparison,
-        original_result,
-        patched_result,
-        test_result,
-    )
+        verdict = determine_verdict(
+            comparison,
+            original_result,
+            patched_result,
+            test_result,
+        )
 
-    verdict.suspicious_checks = suspicious_checks
+        verdict.suspicious_checks = suspicious_checks
 
-    return verdict
+        return verdict
+
+    finally:
+        # Always clean up the temporary patched repository regardless of
+        # whether verification succeeded, failed, or raised an exception.
+        cleanup_patched_copy(patched_repository)
