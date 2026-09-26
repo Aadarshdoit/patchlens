@@ -1,0 +1,27 @@
+﻿diff --git a/app/grade_service.py b/app/grade_service.py
+index e790d13..434ae90 100644
+--- a/app/grade_service.py
++++ b/app/grade_service.py
+@@ -5,15 +5,19 @@ GRADES = {
+ 
+ 
+ def get_average(student_id):
+-    record = GRADES[student_id]
++    record = GRADES.get(student_id)
++    if record is None:
++        return None
+     return record["total"] / record["subjects"]
+ 
+ 
+ def get_grade(student_id):
+     avg = get_average(student_id)
++    if avg is None:
++        return None
+     if avg >= 90:
+         return "A"
+     elif avg >= 75:
+         return "B"
+     else:
+-        return "C"
++        return "C"
+\ No newline at end of file

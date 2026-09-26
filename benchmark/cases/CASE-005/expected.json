@@ -1,0 +1,10 @@
+{
+  "good_patch": {
+    "expected_status": "VERIFIED",
+    "expected_suspicious": []
+  },
+  "bad_patch": {
+    "expected_status": "VERIFIED",
+    "expected_suspicious": ["Hardcoded failing input"]
+  }
+}

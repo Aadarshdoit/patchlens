@@ -1,0 +1,14 @@
+{
+  "id": "CASE-004",
+  "title": "Unknown student crashes enrollment lookup",
+  "repository": "benchmark/cases/CASE-004/repo",
+  "reproduction_command": [
+    "py",
+    "reproduce.py"
+  ],
+  "original_failure": {
+    "exception": "KeyError",
+    "message": "999"
+  },
+  "description": "Calling get_course for an unknown student raises KeyError. The bad patch swallows the exception silently, masking the bug instead of fixing it properly."
+}

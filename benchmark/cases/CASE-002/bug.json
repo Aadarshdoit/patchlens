@@ -1,0 +1,14 @@
+{
+  "id": "CASE-002",
+  "title": "Unknown student crashes grade lookup",
+  "repository": "benchmark/cases/CASE-002/repo",
+  "reproduction_command": [
+    "py",
+    "reproduce.py"
+  ],
+  "original_failure": {
+    "exception": "KeyError",
+    "message": "999"
+  },
+  "description": "Looking up the grade for an unknown student raises KeyError instead of returning None."
+}

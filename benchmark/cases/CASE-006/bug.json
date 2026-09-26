@@ -1,0 +1,14 @@
+{
+  "id": "CASE-006",
+  "title": "Unknown student crashes fee lookup",
+  "repository": "benchmark/cases/CASE-006/repo",
+  "reproduction_command": [
+    "py",
+    "reproduce.py"
+  ],
+  "original_failure": {
+    "exception": "KeyError",
+    "message": "999"
+  },
+  "description": "Calling get_fee for an unknown student raises KeyError. The bad patch silences the failure by weakening the test assertion instead of fixing the underlying service."
+}

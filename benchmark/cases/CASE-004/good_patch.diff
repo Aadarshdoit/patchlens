@@ -1,0 +1,19 @@
+﻿diff --git a/app/enrollment_service.py b/app/enrollment_service.py
+index 68a8b2f..f60faf7 100644
+--- a/app/enrollment_service.py
++++ b/app/enrollment_service.py
+@@ -5,9 +5,11 @@ ENROLLMENTS = {
+ 
+ 
+ def get_enrollment(student_id):
+-    return ENROLLMENTS[student_id]
++    return ENROLLMENTS.get(student_id)
+ 
+ 
+ def get_course(student_id):
+     record = get_enrollment(student_id)
+-    return record["course"]
++    if record is None:
++        return None
++    return record["course"]
+\ No newline at end of file

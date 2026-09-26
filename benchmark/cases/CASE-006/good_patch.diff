@@ -1,0 +1,22 @@
+﻿diff --git a/app/fee_service.py b/app/fee_service.py
+index d7e987b..9072794 100644
+--- a/app/fee_service.py
++++ b/app/fee_service.py
+@@ -5,9 +5,14 @@ FEES = {
+ 
+ 
+ def get_fee(student_id):
+-    return FEES[student_id]["amount"]
++    record = FEES.get(student_id)
++    if record is None:
++        return None
++    return record["amount"]
+ 
+ 
+ def is_fee_due(student_id, paid):
+     fee = get_fee(student_id)
+-    return paid < fee
++    if fee is None:
++        return None
++    return paid < fee
+\ No newline at end of file

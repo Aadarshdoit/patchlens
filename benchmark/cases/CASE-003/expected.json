@@ -1,0 +1,8 @@
+{
+  "good_patch": {
+    "expected_status": "VERIFIED"
+  },
+  "bad_patch": {
+    "expected_status": "INCONCLUSIVE"
+  }
+}

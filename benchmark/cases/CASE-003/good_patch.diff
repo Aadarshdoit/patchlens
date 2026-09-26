@@ -1,0 +1,22 @@
+﻿diff --git a/app/score_service.py b/app/score_service.py
+index d5b0c21..f1c0a59 100644
+--- a/app/score_service.py
++++ b/app/score_service.py
+@@ -5,9 +5,14 @@ SCORES = {
+ 
+ 
+ def get_score(student_id):
+-    return SCORES[student_id]["score"]
++    record = SCORES.get(student_id)
++    if record is None:
++        return None
++    return record["score"]
+ 
+ 
+ def get_rank(student_id):
+     score = get_score(student_id)
+-    return "pass" if score >= 50 else "fail"
++    if score is None:
++        return None
++    return "pass" if score >= 50 else "fail"
+\ No newline at end of file

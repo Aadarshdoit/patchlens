@@ -1,0 +1,14 @@
+{
+  "id": "CASE-005",
+  "title": "Unknown student crashes library borrowed-count lookup",
+  "repository": "benchmark/cases/CASE-005/repo",
+  "reproduction_command": [
+    "py",
+    "reproduce.py"
+  ],
+  "original_failure": {
+    "exception": "KeyError",
+    "message": "999"
+  },
+  "description": "Calling get_borrowed_count for an unknown student raises KeyError. The bad patch hard-codes a return value for student_id 999 instead of handling the general case."
+}

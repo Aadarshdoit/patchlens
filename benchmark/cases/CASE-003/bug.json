@@ -1,0 +1,14 @@
+{
+  "id": "CASE-003",
+  "title": "Unknown student rank lookup crashes with KeyError",
+  "repository": "benchmark/cases/CASE-003/repo",
+  "reproduction_command": [
+    "py",
+    "reproduce.py"
+  ],
+  "original_failure": {
+    "exception": "KeyError",
+    "message": "999"
+  },
+  "description": "Calling get_rank for an unknown student raises KeyError. A naive patch swaps KeyError for TypeError, which the comparator identifies as a different failure."
+}

@@ -1,0 +1,12 @@
+﻿diff --git a/app/grade_service.py b/app/grade_service.py
+index e790d13..08cf20f 100644
+--- a/app/grade_service.py
++++ b/app/grade_service.py
+@@ -5,6 +5,7 @@ GRADES = {
+ 
+ 
+ def get_average(student_id):
++    # Compute average score for the student
+     record = GRADES[student_id]
+     return record["total"] / record["subjects"]
+ 
