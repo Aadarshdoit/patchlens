@@ -47,8 +47,20 @@ class VerificationRequest(BaseModel):
 
 @router.post("/verify")
 def verify(request: VerificationRequest):
-    repository = Path(request.repository).resolve()
-    patch_file = Path(request.patch_file).resolve()
+    repository_path = Path(request.repository)
+    patch_path = Path(request.patch_file)
+
+    repository = (
+        repository_path
+        if repository_path.is_absolute()
+        else _PROJECT_ROOT / repository_path
+        ).resolve()
+
+    patch_file = (
+        patch_path
+        if patch_path.is_absolute()
+        else _PROJECT_ROOT / patch_path
+        ).resolve()
 
     # ------------------------------------------------------------------
     # Path validation

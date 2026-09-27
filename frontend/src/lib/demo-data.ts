@@ -28,8 +28,8 @@ export const demoJob: VerificationJob = {
     "The application crashes instead of handling a missing student record gracefully.",
 
   reproductionCommand: "python reproduce.py",
-  repository: "C:/Users/RAJEEV/OneDrive/Desktop/patchlens/demo-repo",
-  patchFile: "C:/Users/RAJEEV/OneDrive/Desktop/patchlens/benchmark/good_fix.diff",
+  repository: "demo-repo",
+  patchFile: "benchmark/good_fix.diff",
 
   patch: `--- a/app/student_service.py
 +++ b/app/student_service.py
