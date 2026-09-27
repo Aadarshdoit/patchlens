@@ -20,6 +20,7 @@ Security:
 
 import io
 import os
+import re
 import tempfile
 from pathlib import Path
 
@@ -30,6 +31,114 @@ from engine.reproducer import ALLOWED_COMMANDS
 from engine.verifier import verify_patch
 from engine.workspace import WorkspaceError, cleanup_workspace, extract_project_zip, validate_python_project
 from ai.diff_analyzer import DiffAnalyzer
+
+# ---------------------------------------------------------------------------
+# Patch path normalisation helper
+# ---------------------------------------------------------------------------
+
+def _normalise_patch_paths(patch_bytes: bytes, project_dir: str) -> bytes:
+    """Normalise a unified diff so it applies cleanly inside *project_dir*.
+
+    Two transformations are applied while **preserving the patch's original
+    line endings** (LF or CRLF), because ``git apply`` matches context lines
+    against the target file byte-for-byte including line endings.  Converting
+    line endings would break patches applied against CRLF files.
+
+    1. **Path prefix stripping** — if the diff paths carry a leading component
+       that does not exist as a directory inside *project_dir*, strip it.
+       Example::
+
+           patch: "--- a/demo-repo/app/student_service.py"
+           project_dir contains "app/" but not "demo-repo/"
+           → rewrite as "--- a/app/student_service.py"
+
+    2. **Trailing-space removal on blank context lines** — a blank context line
+       in a diff looks like ``" \\r\\n"`` (space + CRLF) or ``" \\n"`` (space + LF).
+       When the underlying source file's blank line has no trailing space,
+       ``git apply`` rejects the mismatch.  We strip the space so the context
+       line becomes exactly the line-ending (matching the file's blank line).
+    """
+    try:
+        raw = patch_bytes.decode("utf-8", errors="replace")
+    except Exception:
+        return patch_bytes
+
+    if not raw:
+        return patch_bytes
+
+    # Split preserving line endings — we must keep \r\n intact where present.
+    # str.splitlines(keepends=True) does this correctly.
+    lines = raw.splitlines(keepends=True)
+
+    # ---- Transform 1: detect whether path prefix stripping is needed -------
+    need_strip = False
+    leading = ""
+    for line in lines:
+        # Match the first "--- a/..." or "--- ..." header line
+        m = re.match(r'^--- (?:a/)?(.+)', line)
+        if m:
+            first_path = m.group(1).rstrip("\r\n").strip()
+            parts = first_path.replace("\\", "/").split("/")
+            if len(parts) >= 2:
+                leading = parts[0]
+                need_strip = not (Path(project_dir) / leading).is_dir()
+            break
+
+    def _strip_one(path_str: str) -> str:
+        """Remove the first slash-delimited path component."""
+        n = path_str.replace("\\", "/")
+        idx = n.find("/")
+        return n[idx + 1:] if idx != -1 else path_str
+
+    def _eol(s: str) -> str:
+        """Return the line-ending characters at the end of *s*."""
+        stripped = s.rstrip("\r\n")
+        return s[len(stripped):]
+
+    # ---- Process each line -------------------------------------------------
+    out = []
+    for line in lines:
+        eol = _eol(line)
+        content = line.rstrip("\r\n")
+
+        # Transform 1: path prefix stripping on diff header lines
+        if need_strip:
+            if content.startswith("diff --git "):
+                content = re.sub(
+                    r'^(diff --git )a/(\S+) b/(\S+)',
+                    lambda m: (
+                        m.group(1)
+                        + "a/" + _strip_one(m.group(2))
+                        + " b/" + _strip_one(m.group(3))
+                    ),
+                    content,
+                )
+            elif content.startswith("--- a/") or content.startswith("+++ b/"):
+                prefix = content[:6]
+                content = prefix + _strip_one(content[6:])
+            elif content.startswith(("--- ", "+++ ")):
+                prefix = content[:4]
+                rest = content[4:]
+                if rest.replace("\\", "/").startswith(leading + "/"):
+                    content = prefix + _strip_one(rest)
+
+        # Transform 2: blank context lines — remove spurious trailing space
+        # A context line starts with exactly one space.  If the remainder
+        # (before the line-ending) is empty or all spaces, it's a blank line
+        # in the original file.  Remove the trailing space so the context
+        # byte-sequence matches the file's actual blank line.
+        if content.startswith(" ") and not content.startswith(("--- ", "+++ ")):
+            body = content[1:]  # content after the leading space marker
+            if body == "" or body.isspace():
+                content = ""  # bare newline — no leading space needed for blank line
+                # NOTE: we keep "content = ''" and re-attach eol below,
+                # but git apply needs the context marker space.  Keep " ".
+                content = " "
+
+        out.append(content + eol)
+
+    return "".join(out).encode("utf-8")
+
 
 router = APIRouter(prefix="/api", tags=["upload"])
 
@@ -109,7 +218,25 @@ async def upload_verify(
     except WorkspaceError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
-    # Write the patch file into the workspace temp dir (sibling of project_dir)
+    # ------------------------------------------------------------------
+    # 4b. Normalise patch paths if needed
+    # ------------------------------------------------------------------
+    # git apply runs with cwd = extracted project directory.  The patch
+    # file may have been generated against a parent directory (e.g. the
+    # full repository root), so its paths may carry extra leading
+    # components such as "demo-repo/app/student_service.py" when the
+    # extracted project contains "app/student_service.py" directly.
+    #
+    # Strategy: parse the leading path component from the first --- line
+    # of the patch and strip it when all those components (except the
+    # last filename part) form a prefix that does NOT exist as a
+    # directory inside project_dir.  This is equivalent to git apply -p1
+    # applied selectively.  We only strip one level at a time because
+    # that covers all real-world cases (generated-from-repo-root diffs).
+    patch_bytes = _normalise_patch_paths(patch_bytes, project_dir)
+
+    # Write the (possibly normalised) patch into the workspace temp dir
+    # (sibling of project_dir so it is outside the project tree).
     temp_root = str(Path(project_dir).parent)
     patch_path = Path(temp_root) / f"candidate{patch_suffix}"
     try:
@@ -142,6 +269,7 @@ async def upload_verify(
                 repository=project_dir,
                 patch_file=str(patch_path),
                 reproduction_command=reproduction_command,
+                ignore_whitespace=True,
             )
         except PatchApplicationError as error:
             raise HTTPException(

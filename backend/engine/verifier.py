@@ -10,6 +10,8 @@ def verify_patch(
     repository: str,
     patch_file: str,
     reproduction_command: list[str],
+    *,
+    ignore_whitespace: bool = False,
 ) -> object:
 
     original_result = run_command(
@@ -20,6 +22,7 @@ def verify_patch(
     patched_repository = create_patched_copy(
         repository,
         patch_file,
+        ignore_whitespace=ignore_whitespace,
     )
 
     try:

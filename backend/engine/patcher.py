@@ -28,10 +28,21 @@ def _rmtree(path: str) -> None:
 def create_patched_copy(
     repository: str,
     patch_file: str,
+    *,
+    ignore_whitespace: bool = False,
 ) -> str:
     """Copy *repository* to a temp directory and apply *patch_file*.
 
     Returns the path to the patched copy.
+
+    Args:
+        repository: path to the source repository directory.
+        patch_file: path to the ``.diff`` or ``.patch`` file to apply.
+        ignore_whitespace: when ``True``, pass ``--ignore-whitespace`` to
+            ``git apply``.  This is needed when the patch was generated with
+            one line-ending convention (e.g. LF) and the target files use
+            another (e.g. CRLF).  Defaults to ``False`` so existing callers
+            are unaffected.
 
     Raises:
         PatchApplicationError: if ``git apply`` fails.  The temporary
@@ -46,8 +57,13 @@ def create_patched_copy(
     try:
         shutil.copytree(source, destination)
 
+        cmd = ["git", "apply"]
+        if ignore_whitespace:
+            cmd.append("--ignore-whitespace")
+        cmd.append(str(patch))
+
         result = subprocess.run(
-            ["git", "apply", str(patch)],
+            cmd,
             cwd=destination,
             capture_output=True,
             text=True,

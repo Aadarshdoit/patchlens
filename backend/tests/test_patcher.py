@@ -11,6 +11,7 @@ def test_create_patched_copy():
     patched_repo = create_patched_copy(
         str(demo_repo),
         str(patch_file),
+        ignore_whitespace=True,
     )
 
     patched_file = Path(patched_repo) / "app" / "student_service.py"

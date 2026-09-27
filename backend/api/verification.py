@@ -122,6 +122,7 @@ def verify(request: VerificationRequest):
             repository=str(repository),
             patch_file=str(patch_file),
             reproduction_command=request.reproduction_command,
+            ignore_whitespace=True,
         )
 
     except PatchApplicationError as error:

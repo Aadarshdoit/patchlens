@@ -13,6 +13,7 @@ def test_verify_good_patch():
         repository=str(demo_repo),
         patch_file=str(patch_file),
         reproduction_command=["python", "reproduce.py"],
+        ignore_whitespace=True,
     )
 
     assert verdict.status == "VERIFIED"
